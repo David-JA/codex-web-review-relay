@@ -1,13 +1,10 @@
 # Review Request
 
-Package kind: 
-eview-request
-Review stream: 
-elease-v030
-Effective round: 3
-Target kind: commit
-Target ID: 
-eview-v030-release
+Package kind: `review-request`
+Review stream: `release-v030`
+Effective round: `3`
+Target kind: `commit`
+Target ID: `review-v030-release`
 Review scope: v0.3.0 release plan execution completeness, MCP tool schema portability fix (oneOf/const/format removal, schema v2.1), schema_version single-source-of-truth refactor, release asset regeneration requirement, and remaining release gate assessment
 
 ## Review request
@@ -16,9 +13,9 @@ Review the commits at the reviewed head for correctness, completeness, and relea
 
 This is round 3 of the release-v030 stream. Round 1 reviewed the initial v0.3.0 release-hardening commits. Round 2 was blocked because the handoff commit had not been pushed to the remote. Since round 1, three additional commits were made:
 
-1. 31ff9fe - fix: use portable MCP tool input schemas for cross-provider compatibility
-2. 9b7f4c - refactor: derive /health schema_version from the loaded contract
-3. dc446bf - docs: add v0.3.0 release review round-02 handoff
+1. `31ff9fe` - fix: use portable MCP tool input schemas for cross-provider compatibility
+2. `e9b7f4c` - refactor: derive /health schema_version from the loaded contract
+3. `dc446bf` - docs: add v0.3.0 release review round-02 handoff
 
 Pay particular attention to:
 
