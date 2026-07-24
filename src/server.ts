@@ -10,7 +10,7 @@ export const MCP_PROTOCOL_VERSION = "2025-11-25";
 const MAX_BODY_BYTES = 1_048_576;
 const contract = JSON.parse(
   readFileSync(new URL("../contracts/mcp-tools.schema.json", import.meta.url), "utf8"),
-) as {tools: unknown[]};
+) as {schema_version: {major: number; minor: number}; tools: unknown[]};
 
 interface JsonRpcRequest {
   jsonrpc: "2.0";
@@ -82,7 +82,7 @@ export function createRelayServer(
       const activeSession = store.getActiveSession();
       sendJson(response, 200, {
         status: "ok",
-        schema_version: {major: 2, minor: 1},
+        schema_version: contract.schema_version,
         mcp_protocol_version: MCP_PROTOCOL_VERSION,
         active_job: activeJob ? {job_id: activeJob.job_id, phase: activeJob.phase} : null,
         active_session: activeSession ? {session_id: activeSession.session_id, lease_expires_at: activeSession.lease_expires_at} : null,
