@@ -82,7 +82,7 @@ export function createRelayServer(
       const activeSession = store.getActiveSession();
       sendJson(response, 200, {
         status: "ok",
-        schema_version: {major: 2, minor: 0},
+        schema_version: {major: 2, minor: 1},
         mcp_protocol_version: MCP_PROTOCOL_VERSION,
         active_job: activeJob ? {job_id: activeJob.job_id, phase: activeJob.phase} : null,
         active_session: activeSession ? {session_id: activeSession.session_id, lease_expires_at: activeSession.lease_expires_at} : null,

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "schema_version": {"major": 2, "minor": 0},
+  "schema_version": {"major": 2, "minor": 1},
   "mcp_protocol_version": "2025-11-25",
   "tools": [
     {
@@ -24,28 +24,20 @@
         "required": ["handoff_file", "confirm_unsent"],
         "properties": {
           "handoff_file": {"type": "string", "minLength": 1},
-          "confirm_unsent": {"const": true}
+          "confirm_unsent": {"type": "boolean", "description": "Must be true to authorize audited manual recovery."}
         }
       }
     },
     {
       "name": "get_review_transport_status",
-      "description": "Read a persisted transport job by exactly one stable lookup key.",
+      "description": "Read a persisted transport job. Provide exactly one of job_id or handoff_file.",
       "inputSchema": {
-        "oneOf": [
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["job_id"],
-            "properties": {"job_id": {"type": "string", "format": "uuid"}}
-          },
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["handoff_file"],
-            "properties": {"handoff_file": {"type": "string", "minLength": 1}}
-          }
-        ]
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {"type": "string", "minLength": 1, "description": "Persisted job ID. Do not provide handoff_file at the same time."},
+          "handoff_file": {"type": "string", "minLength": 1, "description": "Absolute canonical handoff file. Do not provide job_id at the same time."}
+        }
       }
     },
     {
@@ -56,7 +48,7 @@
         "additionalProperties": false,
         "required": ["job_id"],
         "properties": {
-          "job_id": {"type": "string", "format": "uuid"},
+          "job_id": {"type": "string", "minLength": 1},
           "limit": {"type": "integer", "minimum": 1, "maximum": 500}
         }
       }
