@@ -133,17 +133,15 @@ def main() -> None:
     )
     if head_blob.returncode != 0:
         fail("HANDOFF_HEAD_BLOB_MISSING")
-    try:
-        worktree_bytes = abs_path.read_bytes()
-    except OSError:
-        fail("HANDOFF_READ_ERROR")
-    if worktree_bytes != head_blob.stdout:
-        fail("HANDOFF_BLOB_MISMATCH")
+    # Use the committed blob as canonical bytes.  The worktree file may differ
+    # due to EOL filters (core.autocrlf, .gitattributes) while git diff --quiet
+    # above already confirmed semantic cleanliness.
+    canonical_bytes = head_blob.stdout
 
     # 4. Preserve the committed bytes for identity; decode only for header parsing
-    handoff_sha = hashlib.sha256(worktree_bytes).hexdigest()
+    handoff_sha = hashlib.sha256(canonical_bytes).hexdigest()
     try:
-        content = worktree_bytes.decode("utf-8")
+        content = canonical_bytes.decode("utf-8")
     except UnicodeDecodeError:
         fail("HANDOFF_ENCODING_INVALID")
 

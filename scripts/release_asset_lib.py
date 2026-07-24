@@ -124,6 +124,28 @@ def validate_dist(root: Path, dist: Path) -> dict[str, str]:
         installer = archive.read("scripts/install-native-host.ps1").decode("utf-8")
         if "Join-Path $runtimeRoot 'src\\cli.ts'" not in installer or "repositoryRoot" in installer or "helperPath" in installer:
             raise ValueError("INSTALLER_CONTRACT_MISMATCH")
+        contract = json.loads(archive.read("contracts/mcp-tools.schema.json"))
+        if contract.get("schema_version") != {"major": 2, "minor": 1}:
+            raise ValueError("CONTRACT_SCHEMA_VERSION_MISMATCH")
+        for tool in contract.get("tools", []):
+            schema = tool.get("inputSchema", {})
+            if schema.get("type") != "object":
+                raise ValueError(f"CONTRACT_PORTABILITY_TYPE:{tool.get('name')}")
+            for kw in ("oneOf", "anyOf", "allOf"):
+                if kw in schema:
+                    raise ValueError(f"CONTRACT_PORTABILITY_COMPOSITION:{tool.get('name')}")
+            for prop_name, prop_schema in schema.get("properties", {}).items():
+                for kw in ("const", "format"):
+                    if kw in prop_schema:
+                        raise ValueError(f"CONTRACT_PORTABILITY_KEYWORD:{tool.get('name')}.{prop_name}")
+        source_contract = (root / "contracts" / "mcp-tools.schema.json").read_bytes()
+        if archive.read("contracts/mcp-tools.schema.json") != source_contract:
+            raise ValueError("CONTRACT_SOURCE_BYTE_MISMATCH")
+        for fixed in ("scripts/install-native-host.ps1", "scripts/register-native-host.ps1",
+                      "scripts/tools/relay_export_helper.py", "LICENSE", "INSTALL.md", "MIGRATION.md"):
+            source_bytes = (root / fixed).read_bytes()
+            if archive.read(fixed) != source_bytes:
+                raise ValueError(f"SOURCE_BYTE_MISMATCH:{fixed}")
 
     machine_paths = {
         str(root.resolve()).replace("\\", "/").lower().encode("utf-8"),

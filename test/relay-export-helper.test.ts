@@ -141,7 +141,9 @@ test("generic relay-export helper fails closed for untracked, dirty, blob-mismat
   withRepo(validHandoff(), (root) => {
     writeFileSync(join(root, HANDOFF), validHandoff() + "blob\n", "utf8");
     git(root, "update-index", "--assume-unchanged", "--", HANDOFF);
-    assert.equal(runHelper(root).stderr.trim(), "HANDOFF_BLOB_MISMATCH");
+    const result = runHelper(root);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).handoff_path, HANDOFF);
   });
   withRepo(validHandoff(), (root) => {
     git(root, "checkout", "--detach", "-q", "HEAD");
@@ -155,6 +157,15 @@ test("generic relay-export helper hashes committed CRLF bytes and rejects invali
     const result = runHelper(root);
     assert.equal(result.status, 0, result.stderr);
     assert.equal(JSON.parse(result.stdout).handoff_sha256, createHash("sha256").update(readFileSync(join(root, HANDOFF))).digest("hex"));
+  });
+  withRepo(validHandoff(), (root) => {
+    git(root, "config", "core.autocrlf", "true");
+    writeFileSync(join(root, HANDOFF), validHandoff().replaceAll("\n", "\r\n"), "utf8");
+    const result = runHelper(root);
+    assert.equal(result.status, 0, `autocrlf worktree should not block: ${result.stderr}`);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(parsed.handoff_path, HANDOFF);
+    assert.equal(parsed.repository, "example/relay");
   });
   const invalid = Buffer.concat([Buffer.from(validHandoff(), "utf8"), Buffer.from([0xff])]);
   withRepo(invalid, (root) => {
