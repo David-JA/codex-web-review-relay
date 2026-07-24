@@ -133,9 +133,21 @@ def main() -> None:
     )
     if head_blob.returncode != 0:
         fail("HANDOFF_HEAD_BLOB_MISSING")
-    # Use the committed blob as canonical bytes.  The worktree file may differ
-    # due to EOL filters (core.autocrlf, .gitattributes) while git diff --quiet
-    # above already confirmed semantic cleanliness.
+    # Verify worktree identity through Git's clean filter so that EOL
+    # normalization (core.autocrlf, .gitattributes) is respected while
+    # real content drift -- even hidden by --assume-unchanged -- is caught.
+    head_oid = subprocess.run(
+        ["git", "rev-parse", f"HEAD:{handoff_path}"],
+        cwd=repo_root, capture_output=True, text=True,
+    )
+    worktree_oid = subprocess.run(
+        ["git", "hash-object", "--path", handoff_path, str(abs_path)],
+        cwd=repo_root, capture_output=True, text=True,
+    )
+    if (head_oid.returncode != 0 or worktree_oid.returncode != 0
+            or head_oid.stdout.strip() != worktree_oid.stdout.strip()):
+        fail("HANDOFF_DIRTY_WORKTREE")
+    # Use the committed blob as canonical bytes for hashing and parsing.
     canonical_bytes = head_blob.stdout
 
     # 4. Preserve the committed bytes for identity; decode only for header parsing

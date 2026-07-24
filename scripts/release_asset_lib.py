@@ -112,6 +112,10 @@ def validate_dist(root: Path, dist: Path) -> dict[str, str]:
         background = archive.read("background.js").decode("utf-8")
         if NATIVE_HOST_NAME not in background:
             raise ValueError("EXTENSION_NATIVE_HOST_NAME_MISMATCH")
+        for ext_file in sorted(EXTENSION_FILES):
+            source_bytes = (root / "extension" / ext_file).read_bytes()
+            if archive.read(ext_file) != source_bytes:
+                raise ValueError(f"EXTENSION_SOURCE_BYTE_MISMATCH:{ext_file}")
 
     native_names = set(zip_inventory(native))
     expected_native = native_allowlist(root)
@@ -141,11 +145,18 @@ def validate_dist(root: Path, dist: Path) -> dict[str, str]:
         source_contract = (root / "contracts" / "mcp-tools.schema.json").read_bytes()
         if archive.read("contracts/mcp-tools.schema.json") != source_contract:
             raise ValueError("CONTRACT_SOURCE_BYTE_MISMATCH")
-        for fixed in ("scripts/install-native-host.ps1", "scripts/register-native-host.ps1",
+        for fixed in ("native-host/launcher.cs.template",
+                      "scripts/install-native-host.ps1", "scripts/register-native-host.ps1",
                       "scripts/tools/relay_export_helper.py", "LICENSE", "INSTALL.md", "MIGRATION.md"):
             source_bytes = (root / fixed).read_bytes()
             if archive.read(fixed) != source_bytes:
                 raise ValueError(f"SOURCE_BYTE_MISMATCH:{fixed}")
+        for src_file in sorted((root / "src").rglob("*")):
+            if src_file.is_file():
+                relative = (Path("src") / src_file.relative_to(root / "src")).as_posix()
+                source_bytes = src_file.read_bytes()
+                if archive.read(relative) != source_bytes:
+                    raise ValueError(f"SOURCE_BYTE_MISMATCH:{relative}")
 
     machine_paths = {
         str(root.resolve()).replace("\\", "/").lower().encode("utf-8"),

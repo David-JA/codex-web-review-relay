@@ -141,9 +141,7 @@ test("generic relay-export helper fails closed for untracked, dirty, blob-mismat
   withRepo(validHandoff(), (root) => {
     writeFileSync(join(root, HANDOFF), validHandoff() + "blob\n", "utf8");
     git(root, "update-index", "--assume-unchanged", "--", HANDOFF);
-    const result = runHelper(root);
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(JSON.parse(result.stdout).handoff_path, HANDOFF);
+    assert.equal(runHelper(root).stderr.trim(), "HANDOFF_DIRTY_WORKTREE");
   });
   withRepo(validHandoff(), (root) => {
     git(root, "checkout", "--detach", "-q", "HEAD");
