@@ -89,6 +89,17 @@ test("generic relay-export helper validates all identity headers and scope", () 
   });
 });
 
+test("generic relay-export helper falls back when origin is absent", () => {
+  withRepo(validHandoff(), (root) => {
+    git(root, "remote", "remove", "origin");
+    git(root, "remote", "add", "gitee", "https://gitee.com/example/mirror.git");
+    git(root, "remote", "add", "github", "https://github.com/example/relay.git");
+    const result = runHelper(root);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).repository, "example/relay");
+  });
+});
+
 test("generic relay-export helper supports commit-only handoffs without a PR", () => {
   withRepo(validCommitHandoff(), (root) => {
     const result = runHelper(root, COMMIT_HANDOFF);

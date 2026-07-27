@@ -32,6 +32,8 @@ HEADER_FIELDS = (
     "Review scope",
 )
 
+REMOTE_PREFERENCE = ("origin", "github", "upstream", "agent", "gitee")
+
 
 def fail(code: str) -> None:
     print(code, file=sys.stderr)
@@ -64,6 +66,37 @@ def parse_header(text: str, field: str) -> str:
     if len(matches) != 1 or not matches[0].strip():
         fail("HANDOFF_HEADER_INVALID")
     return matches[0].strip().strip("`").strip()
+
+
+def parse_remote_repository(remote_url: str) -> str | None:
+    value = remote_url.strip().removesuffix(".git")
+    match = re.search(r"(?:^git@[^:]+:|^https?://[^/]+/|^ssh://[^/]+/)([^/]+/[^/]+)$", value)
+    if not match or not re.fullmatch(r"[^/\s]+/[^/\s]+", match.group(1)):
+        return None
+    return match.group(1)
+
+
+def resolve_remote_repository(repo_root: str) -> str:
+    names = [name for name in git("remote", cwd=repo_root).splitlines() if name]
+    ordered_names = [
+        *[name for name in REMOTE_PREFERENCE if name in names],
+        *sorted(name for name in names if name not in REMOTE_PREFERENCE),
+    ]
+    for name in ordered_names:
+        result = subprocess.run(
+            ["git", "remote", "get-url", name],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        if result.returncode != 0:
+            continue
+        repository = parse_remote_repository(result.stdout)
+        if repository is not None:
+            return repository
+    fail("REMOTE_SLUG_INVALID")
+    raise AssertionError("unreachable")
 
 
 def optional_header(text: str, field: str) -> str | None:
@@ -202,12 +235,8 @@ def main() -> None:
         fail("DETACHED_HEAD")
     full_ref = f"refs/heads/{branch}"
 
-    # 7. Determine repository slug from remote
-    remote_url = git("remote", "get-url", "origin", cwd=repo_root)
-    slug_match = re.search(r"[:/]([^/]+/[^/]+?)(?:\.git)?$", remote_url)
-    if not slug_match:
-        fail("REMOTE_SLUG_INVALID")
-    repository = slug_match.group(1)
+    # 7. Determine repository slug from the canonical configured remote
+    repository = resolve_remote_repository(repo_root)
 
     # 8. Output relay-export JSON
     export = {
