@@ -59,7 +59,7 @@ test("repo adapter resolves the current repository and trusted exporter", async 
   } finally { rmSync(root, {recursive: true, force: true}); }
 });
 
-test("repo adapter resolves HTTPS, SCP-style SSH, and ssh origins, and fails closed otherwise", async () => {
+test("repo adapter resolves HTTPS, SCP-style SSH, and ssh remotes, and fails closed otherwise", async () => {
   const root = mkdtempSync(join(tmpdir(), "relay-origin-adapter-test-"));
   const repo = join(root, "repo");
   const handoff = join(repo, ".agent", "review_handoffs", "pr-3", "main", "round-01-review-request.md");
@@ -81,5 +81,20 @@ test("repo adapter resolves HTTPS, SCP-style SSH, and ssh origins, and fails clo
     await assert.rejects(resolveHandoffLocation(handoff), /HANDOFF_LOCATION_INVALID/);
     git(repo, "remote", "remove", "origin");
     await assert.rejects(resolveHandoffLocation(handoff), /HANDOFF_LOCATION_INVALID/);
+  } finally { rmSync(root, {recursive: true, force: true}); }
+});
+
+test("repo adapter falls back to a preferred remote name when origin is absent", async () => {
+  const root = mkdtempSync(join(tmpdir(), "relay-remote-fallback-test-"));
+  const repo = join(root, "repo");
+  const handoff = join(repo, ".agent", "review_handoffs", "pr-4", "main", "round-01-review-request.md");
+  mkdirSync(join(repo, ".agent", "review_handoffs", "pr-4", "main"), {recursive: true});
+  writeFileSync(handoff, "handoff\n", "utf8");
+  git(repo, "init"); git(repo, "config", "user.email", "test@example.invalid"); git(repo, "config", "user.name", "Test");
+  git(repo, "add", "."); git(repo, "commit", "-m", "test");
+  git(repo, "remote", "add", "gitee", "https://gitee.com/example/mirror.git");
+  git(repo, "remote", "add", "github", "https://github.com/example/relay.git");
+  try {
+    assert.equal((await resolveHandoffLocation(handoff)).repository, "example/relay");
   } finally { rmSync(root, {recursive: true, force: true}); }
 });

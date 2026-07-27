@@ -50,7 +50,7 @@
 
 **单进程**：Chrome 通过 Native Messaging 启动 native host。同一进程持有 MCP 服务器、SQLite job store 和 native bridge。无守护进程、无 Docker、无云端。
 
-安装面向本机用户，而不是某个仓库。每次请求提供一个绝对 `handoff_file`，relay 为该请求解析 Git root 和本地 `origin` slug。当前版本仍是 single-active-job：不同仓库可以顺序复用，但不支持队列或并发 reviewer conversation。
+安装面向本机用户，而不是某个仓库。每次请求提供一个绝对 `handoff_file`，relay 为该请求解析 Git root 和一个已配置 remote 的 canonical slug。它优先使用 `origin`，再按 `github`、`upstream`、`agent`、`gitee` 等常见 remote 名称尝试，因此不要求 checkout 重命名现有 remote。当前版本仍是 single-active-job：不同仓库可以顺序复用，但不支持队列或并发 reviewer conversation。
 
 ## v0.3.0 Release
 
@@ -409,7 +409,7 @@ Review scope: <评审者应关注的内容>
 
 关键字段：
 - Exporter 固定为 `<config-directory>/relay_export_helper.py`；runtime 会验证 `lstat`、`realpath` 及其位于 config directory 内。
-- 每次请求提供一个绝对 `handoff_file`；relay 在不访问网络的前提下解析 Git root、tracked canonical relative path 和本地 `origin` 的 `owner/name`。
+- 每次请求提供一个绝对 `handoff_file`；relay 在不访问网络的前提下解析 Git root、tracked canonical relative path 和已配置 remote 的 `owner/name`。remote 优先顺序为 `origin`、`github`、`upstream`、`agent`、`gitee`，再尝试按名称排序的其他 remote。
 - `requestWaitSliceMs`：单次 MCP 调用最长等待时间，超时返回进行中状态（默认 5 分钟）。
 - `turnDeadlineMs`：整个评审 turn 的硬截止时间（默认 30 分钟）。
 

@@ -16,11 +16,27 @@ async function runGit(repositoryRoot: string, args: string[]): Promise<string> {
   }
 }
 
-function parseOriginRepository(origin: string): string {
-  const value = origin.trim().replace(/\.git$/, "");
+function parseRemoteRepository(remoteUrl: string): string {
+  const value = remoteUrl.trim().replace(/\.git$/, "");
   const match = value.match(/^(?:git@[^:]+:|https?:\/\/[^/]+\/|ssh:\/\/[^/]+\/)([^/]+\/[^/]+)$/);
   if (!match || !/^[^/\s]+\/[^/\s]+$/.test(match[1])) throw new Error("REPOSITORY_IDENTITY_UNAVAILABLE");
   return match[1];
+}
+
+const REMOTE_PREFERENCE = ["origin", "github", "upstream", "agent", "gitee"];
+
+async function resolveRepository(repositoryRoot: string): Promise<string> {
+  const names = (await runGit(repositoryRoot, ["remote"])).split(/\r?\n/).filter(Boolean);
+  const orderedNames = [
+    ...REMOTE_PREFERENCE.filter((name) => names.includes(name)),
+    ...names.filter((name) => !REMOTE_PREFERENCE.includes(name)).sort(),
+  ];
+  for (const name of orderedNames) {
+    try {
+      return parseRemoteRepository(await runGit(repositoryRoot, ["remote", "get-url", name]));
+    } catch { /* Try the next configured remote. */ }
+  }
+  throw new Error("REPOSITORY_IDENTITY_UNAVAILABLE");
 }
 
 export interface HandoffLocation {
@@ -41,7 +57,7 @@ export async function resolveHandoffLocation(handoffFile: string): Promise<Hando
     if (!relativeInput || isAbsolute(relativeInput) || relativeInput === ".." || relativeInput.startsWith(`..${sep}`)) throw new Error("escape");
     const trackedPath = await runGit(repositoryRoot, ["ls-files", "--error-unmatch", "--full-name", "--", relativeInput]);
     if (!trackedPath) throw new Error("untracked");
-    const repository = parseOriginRepository(await runGit(repositoryRoot, ["remote", "get-url", "origin"]));
+    const repository = await resolveRepository(repositoryRoot);
     return {handoffFile: resolvedHandoff, repositoryRoot, handoffPath: trackedPath.replaceAll("\\", "/"), repository};
   } catch {
     throw new Error("HANDOFF_LOCATION_INVALID");

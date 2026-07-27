@@ -39,4 +39,4 @@ Every MCP request uses an absolute `handoff_file`, for example:
 request_review(handoff_file="C:\\absolute\\path\\to\\repo\\.agent\\review_handoffs\\...")
 ```
 
-The handoff must be tracked, committed, and equal to `HEAD`. The relay resolves the Git root and local `origin` identity for that request. Different repositories can reuse one installation sequentially; two concurrent active jobs are not supported.
+The handoff must be tracked, committed, and equal to `HEAD`. The relay resolves the Git root and a canonical configured remote identity for that request, preferring `origin` and then common remote names such as `github`, `upstream`, `agent`, and `gitee`. Different repositories can reuse one installation sequentially; two concurrent active jobs are not supported.

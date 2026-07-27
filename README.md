@@ -52,7 +52,7 @@ This relay automates steps 2-3 while keeping **you in control**: you manually op
 
 **Single process**: Chrome launches the native host via Native Messaging. The same process holds the MCP server, SQLite job store, and native bridge. No daemons, no Docker, no cloud.
 
-The installation is user-scoped rather than repository-scoped. Each request supplies one absolute `handoff_file`; the relay resolves the Git root and local `origin` slug for that request. The current release remains single-active-job: different repositories can be reviewed sequentially, while queues and concurrent reviewer conversations are out of scope.
+The installation is user-scoped rather than repository-scoped. Each request supplies one absolute `handoff_file`; the relay resolves the Git root and a canonical configured remote slug for that request. It prefers `origin`, then common named remotes such as `github`, `upstream`, `agent`, and `gitee`, so a checkout does not need to rename its existing remotes. The current release remains single-active-job: different repositories can be reviewed sequentially, while queues and concurrent reviewer conversations are out of scope.
 
 ## v0.3.0 Release
 
@@ -411,7 +411,7 @@ Edit the generated `relay.config.json`:
 
 Key fields:
 - The exporter is fixed at `<config-directory>/relay_export_helper.py`; runtime verifies `lstat`, `realpath`, and containment inside the config directory.
-- Each request supplies one absolute `handoff_file`; the relay resolves the Git root, tracked canonical relative path, and local `origin` `owner/name` without network access.
+- Each request supplies one absolute `handoff_file`; the relay resolves the Git root, tracked canonical relative path, and a configured remote `owner/name` without network access. It prefers `origin`, then `github`, `upstream`, `agent`, and `gitee`, followed by remaining remotes in sorted order.
 - `requestWaitSliceMs`: max time one MCP call waits before returning in-progress (default 5 min).
 - `turnDeadlineMs`: hard deadline for the entire review turn (default 30 min).
 
