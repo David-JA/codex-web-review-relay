@@ -79,7 +79,7 @@ git(["init"]);
 git(["config", "user.email", "smoke@test"]);
 git(["config", "user.name", "smoke"]);
 git(["remote", "add", "origin", "https://github.com/smoke-owner/smoke-repo.git"]);
-const handoffDir = join(smokeRepo, ".agent", "review_handoffs", "review-smoke", "smoke-stream");
+const handoffDir = join(smokeRepo, ".agents", "review_handoffs", "review-smoke", "smoke-stream");
 mkdirSync(handoffDir, {recursive: true});
 const handoffContent = [
   "# Review Request", "",
@@ -94,7 +94,7 @@ const handoffContent = [
 writeFileSync(join(handoffDir, "round-01-review-request.md"), handoffContent, "utf8");
 git(["add", "."]);
 git(["commit", "-m", "smoke handoff"]);
-const handoffRel = ".agent/review_handoffs/review-smoke/smoke-stream/round-01-review-request.md";
+const handoffRel = ".agents/review_handoffs/review-smoke/smoke-stream/round-01-review-request.md";
 const exportRaw = execFileSync(repoConfig.pythonExecutable, [exporterPath, "relay-export", handoffRel], {cwd: smokeRepo, encoding: "utf8", windowsHide: true});
 const exportResult = JSON.parse(exportRaw) as Record<string, unknown>;
 if (exportResult.repository !== "smoke-owner/smoke-repo") throw new Error("SMOKE_EXPORTER_REPOSITORY");

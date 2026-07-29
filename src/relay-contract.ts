@@ -53,7 +53,7 @@ export function validateRelayExport(value: unknown): RelayExport {
 
   requireString(record, "repository", /^[^/\s]+\/[^/\s]+$/);
   const handoffPath = requireString(record, "handoff_path");
-  const pathMatch = handoffPath.match(/^\.agent\/review_handoffs\/(?:pr-([1-9][0-9]*)|review-([a-z0-9][a-z0-9-]*))\/([a-z0-9][a-z0-9-]*)\/round-(0[1-9]|[1-9][0-9]+)-(review-request|review-fix|evidence-amendment|human-decision)\.md$/);
+  const pathMatch = handoffPath.match(/^\.agents?\/review_handoffs\/(?:pr-([1-9][0-9]*)|review-([a-z0-9][a-z0-9-]*))\/([a-z0-9][a-z0-9-]*)\/round-(0[1-9]|[1-9][0-9]+)-(review-request|review-fix|evidence-amendment|human-decision)\.md$/);
   if (!pathMatch) throw new Error("RELAY_EXPORT_INVALID:handoff_path");
   const inferredKind: RelayTargetKind = pathMatch[1] ? "pr" : "commit";
   if (version.minor === 0 && inferredKind !== "pr") {

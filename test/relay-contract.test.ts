@@ -31,6 +31,37 @@ test("relay target identity must exactly match the handoff path", () => {
   }
 });
 
+test("relay export accepts both legacy .agent and current .agents handoff roots", () => {
+  for (const handoff_path of [
+    ".agent/review_handoffs/pr-41/stage-b-delivery/round-01-review-request.md",
+    ".agents/review_handoffs/pr-41/stage-b-delivery/round-01-review-request.md",
+  ]) {
+    const relay = validateRelayExport(relayFixture({handoff_path}));
+    assert.equal(relay.handoff_path, handoff_path);
+  }
+  const commit = validateRelayExport(relayFixture({
+    schema_version: {major: 1, minor: 1},
+    target_kind: "commit",
+    target_id: "review-current-root",
+    target_pr: null,
+    handoff_path: ".agents/review_handoffs/review-current-root/main/round-01-review-request.md",
+  }));
+  assert.equal(commit.handoff_path, ".agents/review_handoffs/review-current-root/main/round-01-review-request.md");
+});
+
+test("relay export rejects noncanonical handoff root aliases", () => {
+  for (const handoff_path of [
+    ".agentss/review_handoffs/pr-41/stage-b-delivery/round-01-review-request.md",
+    ".agent/.agents/review_handoffs/pr-41/stage-b-delivery/round-01-review-request.md",
+    "agents/review_handoffs/pr-41/stage-b-delivery/round-01-review-request.md",
+  ]) {
+    assert.throws(
+      () => validateRelayExport(relayFixture({handoff_path})),
+      /RELAY_EXPORT_INVALID:handoff_path/,
+    );
+  }
+});
+
 test("relay export fails closed on unknown major and scope drift", () => {
   assert.throws(
     () => validateRelayExport(relayFixture({schema_version: {major: 2, minor: 0}})),

@@ -345,7 +345,7 @@ The relay-owned exporter must output exactly one JSON object to stdout on succes
 
 The relay-owned exporter is implemented at `scripts/tools/relay_export_helper.py`. The minimum contract:
 
-1. Validate the handoff path matches `.agent/review_handoffs/pr-<N>/<stream>/round-<NN>-<kind>.md` (PR mode) or `.agent/review_handoffs/review-<id>/<stream>/round-<NN>-<kind>.md` (commit-only mode).
+1. Validate the handoff path under either the legacy `.agent/review_handoffs/` root or the current `.agents/review_handoffs/` root, followed by `pr-<N>/<stream>/round-<NN>-<kind>.md` (PR mode) or `review-<id>/<stream>/round-<NN>-<kind>.md` (commit-only mode). The exporter preserves the actual tracked root in `handoff_path`; it does not normalize one root to the other.
 2. Verify the file is tracked, committed, and worktree matches HEAD.
 3. Read and require the stable headers. PR mode requires `Target PR`; commit-only mode requires `Target kind: commit` and `Target ID` and rejects a PR target. `Review stream`, `Effective round`, and `Package kind` must match the canonical path; missing, duplicate, malformed, or mismatched values are rejected. Scope has no fallback.
 4. Compute SHA-256 hashes and output the JSON.

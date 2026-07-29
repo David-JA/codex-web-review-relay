@@ -33,9 +33,10 @@
 - **handoff 路径正则**（repo 相对，POSIX）：
 
   ```
-  ^\.agent/review_handoffs/(?:pr-[1-9][0-9]*|review-[a-z0-9][a-z0-9-]*)/[a-z0-9][a-z0-9-]*/round-(?:0[1-9]|[1-9][0-9]+)-(review-request|review-fix|evidence-amendment|human-decision)\.md$
+  ^\.agents?/review_handoffs/(?:pr-[1-9][0-9]*|review-[a-z0-9][a-z0-9-]*)/[a-z0-9][a-z0-9-]*/round-(?:0[1-9]|[1-9][0-9]+)-(review-request|review-fix|evidence-amendment|human-decision)\.md$
   ```
 
+- `.agent/` 是 legacy root，`.agents/` 是当前 producer root；二者都是合法的 canonical input。Exporter 与 consumer 必须保留实际 tracked path，不做 root normalization。
 - **relay-export 必填字段**：`schema_version`、`repository`、`handoff_path`、`handoff_sha256`、`full_ref`、`reviewed_head`、`review_stream`、`effective_round`、`package_kind`、`normalized_scope`、`scope_sha256`；Stage 3 schema v1.1 另要求 `target_kind` / `target_id`，`target_pr` 仅在 PR mode 有值。v1.0 PR export 仍可由 consumer 推断 `target_kind=pr` 与 `target_id=pr-<N>`。约束：`scope_sha256 == sha256(canonical_json(normalized_scope))`。见 `src/relay-contract.ts` 与 `contracts/relay-export.schema.json`。
 - **exporter CLI**：`python <config-directory>/relay_export_helper.py relay-export <handoff_path>`，`cwd = resolvedRepositoryRoot`。成功：stdout **仅一个** JSON 对象；失败：非零退出 + stderr 稳定错误码。见 `src/repo-adapter.ts`。
 - **header fields 非 YAML frontmatter**：scope 等取自正文稳定 header 行（如 `Review scope:`），不要写成 frontmatter。

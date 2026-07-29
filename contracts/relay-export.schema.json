@@ -45,7 +45,7 @@
       "required": ["target_pr"],
       "properties": {
         "schema_version": {"properties": {"minor": {"const": 0}}},
-        "handoff_path": {"pattern": "^\\.agent/review_handoffs/pr-[1-9][0-9]*/[a-z0-9][a-z0-9-]*/round-(0[1-9]|[1-9][0-9]+)-(review-request|review-fix|evidence-amendment|human-decision)\\.md$"},
+        "handoff_path": {"pattern": "^\\.agents?/review_handoffs/pr-[1-9][0-9]*/[a-z0-9][a-z0-9-]*/round-(0[1-9]|[1-9][0-9]+)-(review-request|review-fix|evidence-amendment|human-decision)\\.md$"},
         "target_pr": {"type": "integer", "minimum": 1, "description": "Runtime validator also enforces target_id == pr-${target_pr}."},
         "target_kind": {"const": "pr"},
         "target_id": {"pattern": "^pr-[1-9][0-9]*$"}
@@ -59,7 +59,7 @@
         "target_kind": {"const": "pr"},
         "target_id": {"pattern": "^pr-[1-9][0-9]*$"},
         "target_pr": {"type": "integer", "minimum": 1, "description": "Runtime validator also enforces target_id == pr-${target_pr}."},
-        "handoff_path": {"pattern": "^\\.agent/review_handoffs/pr-[1-9][0-9]*/[a-z0-9][a-z0-9-]*/round-(0[1-9]|[1-9][0-9]+)-(review-request|review-fix|evidence-amendment|human-decision)\\.md$"}
+        "handoff_path": {"pattern": "^\\.agents?/review_handoffs/pr-[1-9][0-9]*/[a-z0-9][a-z0-9-]*/round-(0[1-9]|[1-9][0-9]+)-(review-request|review-fix|evidence-amendment|human-decision)\\.md$"}
       }
     },
     {
@@ -70,7 +70,7 @@
         "target_kind": {"const": "commit"},
         "target_id": {"pattern": "^review-[a-z0-9][a-z0-9-]*$"},
         "target_pr": {"const": null},
-        "handoff_path": {"pattern": "^\\.agent/review_handoffs/review-[a-z0-9][a-z0-9-]*/[a-z0-9][a-z0-9-]*/round-(0[1-9]|[1-9][0-9]+)-(review-request|review-fix|evidence-amendment|human-decision)\\.md$"}
+        "handoff_path": {"pattern": "^\\.agents?/review_handoffs/review-[a-z0-9][a-z0-9-]*/[a-z0-9][a-z0-9-]*/round-(0[1-9]|[1-9][0-9]+)-(review-request|review-fix|evidence-amendment|human-decision)\\.md$"}
       }
     }
   ]
