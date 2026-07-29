@@ -71,7 +71,10 @@ Out of scope:
   留到 formal review 后的受控重装阶段。
 - [x] 比较当前 source 与 active install：剩余差异只有 line ending；两处
   `remote-fallback-v2` 语义 hotfix 已完整回填。
-- [ ] 回填 Outcome、limitations 与安装/Chrome reload 顺序。
+- [x] 回填 Outcome、limitations 与安装/Chrome reload 顺序。
+- [x] 原位重装 active native host，并运行安装后 `.agents/` clean-install smoke。
+- [ ] 在 Chrome Extension Manager 中从新 checkout path reload unpacked
+  extension，并重启 Codex 读取旋转后的 token。
 
 ## Validation
 
@@ -94,7 +97,7 @@ Out of scope:
 
 ## Outcome
 
-Implementation complete; installation closeout pending.
+Implementation and native-host installation complete; Chrome/Codex reload pending.
 
 - Targeted contract/exporter/schema/repo-adapter suites：23/23 PASS。
 - Full `npm test`：151/151 PASS；本次未复现 README 记录的 open-handle
@@ -104,6 +107,19 @@ Implementation complete; installation closeout pending.
   验证当前 producer root。
 - 保持 schema version、envelope、fingerprint、job lifecycle 与 extension
   transport 不变。
-- 受控顺序：先 commit/push 并完成 formal review；再重装到 active user-local
-  root、验证 clean-install smoke，最后从新 checkout path reload Chrome
-  extension。Installer 会旋转 Bearer token，因此重装后需要重启 Codex。
+- Commit-only formal review 在 reviewed head
+  `77cc0ae530c0c77f93c06273d6908d3d5d8a34bd` 返回 terminal `PASS`，
+  findings 为 None；tracked handoff 已由 direct-successor cleanup-only commit
+  清理。
+- Active user-local root
+  `C:\Users\fanmo\AppData\Local\codex-web-review-relay-remote-fallback-v2`
+  已从 reviewed source 原位重装；`state.sqlite` 保留，注册 manifest 正确，
+  installed `relay-contract.ts` / exporter 与 source SHA-256 完全一致。
+- 安装后 clean-install smoke：health、MCP initialize、tools list 与 `.agents/`
+  commit-only exporter E2E 全部 PASS。
+- Installer 已旋转 Bearer token；当前 Codex 进程必须重启后才能重新连接。
+- Chrome Secure Preferences 仍记录已不存在的
+  `C:\coding_projet\single-crystal-review-relay\extension`。必须在
+  `chrome://extensions/` 移除或重新加载该 unpacked extension，并选择
+  `C:\coding_project\single-crystal-review-relay\extension`；不得直接编辑
+  Chrome profile 文件。
