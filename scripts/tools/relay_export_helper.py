@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 HANDOFF_PATTERN = re.compile(
-    r"^\.agent/review_handoffs/"
+    r"^\.agents?/review_handoffs/"
     r"(?:(?:pr-(?P<pr>[1-9][0-9]*))|(?:review-(?P<review_id>[a-z0-9][a-z0-9-]*)))/"
     r"(?P<stream>[a-z0-9][a-z0-9-]*)/"
     r"round-(?P<round>0[1-9]|[1-9][0-9]+)-"

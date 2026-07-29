@@ -7,7 +7,9 @@ import { join, resolve } from "node:path";
 import test from "node:test";
 
 const HANDOFF = ".agent/review_handoffs/pr-2/main/round-01-review-fix.md";
+const AGENTS_HANDOFF = ".agents/review_handoffs/pr-2/main/round-01-review-fix.md";
 const COMMIT_HANDOFF = ".agent/review_handoffs/review-local-run/main/round-01-review-request.md";
+const AGENTS_COMMIT_HANDOFF = ".agents/review_handoffs/review-local-run/main/round-01-review-request.md";
 const HELPER_SOURCE = resolve("scripts/tools/relay_export_helper.py");
 
 function git(root: string, ...args: string[]): void {
@@ -87,6 +89,19 @@ test("generic relay-export helper validates all identity headers and scope", () 
     assert.equal(payload.package_kind, "review-fix");
     assert.deepEqual(payload.normalized_scope, ["helper contract"]);
   });
+});
+
+test("generic relay-export helper preserves .agents paths for PR and commit-only handoffs", () => {
+  withRepo(validHandoff(), (root) => {
+    const result = runHelper(root, AGENTS_HANDOFF);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).handoff_path, AGENTS_HANDOFF);
+  }, AGENTS_HANDOFF);
+  withRepo(validCommitHandoff(), (root) => {
+    const result = runHelper(root, AGENTS_COMMIT_HANDOFF);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).handoff_path, AGENTS_COMMIT_HANDOFF);
+  }, AGENTS_COMMIT_HANDOFF);
 });
 
 test("generic relay-export helper falls back when origin is absent", () => {

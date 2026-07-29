@@ -52,6 +52,20 @@ test("schema branch fixtures and runtime validator agree on PR versus commit ide
     assert.doesNotThrow(() => validatePublishedSchema(value));
     assert.doesNotThrow(() => validateRelayExport(value));
   }
+  for (const value of [
+    relayFixture({
+      schema_version: {major: 1, minor: 0},
+      handoff_path: ".agents/review_handoffs/pr-41/stage-b-delivery/round-01-review-request.md",
+    }),
+    relayFixture({
+      schema_version: {major: 1, minor: 1},
+      target_kind: "commit", target_id: "review-schema-agents", target_pr: null,
+      handoff_path: ".agents/review_handoffs/review-schema-agents/main/round-01-review-request.md",
+    }),
+  ]) {
+    assert.doesNotThrow(() => validatePublishedSchema(value));
+    assert.doesNotThrow(() => validateRelayExport(value));
+  }
   const v10Commit = relayFixture({
     schema_version: {major: 1, minor: 0},
     target_kind: "commit", target_id: "review-schema-check", target_pr: null,

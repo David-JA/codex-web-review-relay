@@ -343,7 +343,7 @@ Relay-owned exporter 成功时必须向 stdout 输出恰好一个 JSON 对象；
 
 Relay-owned exporter 位于 `scripts/tools/relay_export_helper.py`。最小合同：
 
-1. 验证 handoff 路径匹配 `.agent/review_handoffs/pr-<N>/<stream>/round-<NN>-<kind>.md`（PR mode），或 `.agent/review_handoffs/review-<id>/<stream>/round-<NN>-<kind>.md`（commit-only mode）。
+1. 验证 handoff 路径位于 legacy `.agent/review_handoffs/` 或当前 `.agents/review_handoffs/` root 下，后续匹配 `pr-<N>/<stream>/round-<NN>-<kind>.md`（PR mode）或 `review-<id>/<stream>/round-<NN>-<kind>.md`（commit-only mode）。Exporter 在 `handoff_path` 中保留实际 tracked root，不会把两种 root 互相规范化。
 2. 确认文件已 tracked、已 commit、worktree 与 HEAD 一致。
 3. 必须读取稳定 headers。PR mode 要求 `Target PR`；commit-only mode 要求 `Target kind: commit` 和 `Target ID`，并拒绝 PR target。`Review stream`、`Effective round`、`Package kind` 必须与 canonical path 一致；缺失、重复、格式错误或 mismatch 都必须拒绝，不能为缺失的 scope 提供 fallback。
 4. 计算 SHA-256 哈希并输出 JSON。
