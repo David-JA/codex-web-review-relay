@@ -1,6 +1,6 @@
 # `.agent/` / `.agents/` handoff root compatibility
 
-Status: Active
+Status: Done
 Created: 2026-07-29
 Mode: Basic / lightweight
 
@@ -73,7 +73,7 @@ Out of scope:
   `remote-fallback-v2` 语义 hotfix 已完整回填。
 - [x] 回填 Outcome、limitations 与安装/Chrome reload 顺序。
 - [x] 原位重装 active native host，并运行安装后 `.agents/` clean-install smoke。
-- [ ] 在 Chrome Extension Manager 中从新 checkout path reload unpacked
+- [x] 在实际承载 relay 的 Chromium browser 中从新 checkout path reload unpacked
   extension，并重启 Codex 读取旋转后的 token。
 
 ## Validation
@@ -119,7 +119,9 @@ Implementation and native-host installation complete; Chrome/Codex reload pendin
   commit-only exporter E2E 全部 PASS。
 - Installer 已旋转 Bearer token；当前 Codex 进程必须重启后才能重新连接。
 - Chrome Secure Preferences 仍记录已不存在的
-  `C:\coding_projet\single-crystal-review-relay\extension`。必须在
-  `chrome://extensions/` 移除或重新加载该 unpacked extension，并选择
-  `C:\coding_project\single-crystal-review-relay\extension`；不得直接编辑
-  Chrome profile 文件。
+  `C:\coding_projet\single-crystal-review-relay\extension`，但 active relay
+  session 的实际父进程是 `Tabbit Browser.exe`，不是 Google Chrome；该记录是
+  无关残留。Tabbit Browser `Default/Secure Preferences` 已持久登记
+  `C:\coding_project\single-crystal-review-relay\extension`，路径存在且
+  reload 后的 native host 能以新 token 完整 readback terminal job。未直接
+  编辑任何 browser profile 文件。
