@@ -4,9 +4,9 @@
 
 ## 状态
 
-- **Archive status as of 2026-07-23**
-- 当前阶段：Stage 3 已验收；README/contract 已对齐，producer `single-crystal-stress` adaptation PR #45 已合并；本仓库 PR #2 仍为 Draft，等待 Maintainer 检查后 Ready/merge。
-- 归档原因：通用化实现与 acceptance evidence 已完成，后续只保留 PR closeout、handoff cleanup 与 Maintainer merge 决策。
+- **Post-merge closeout status as of 2026-08-13**（原始归档日期：2026-07-23）
+- 当前阶段：Stage 3 已验收，README/contract 已对齐；本仓库 PR #2 已合并（merge commit `cdd12b51b3013b36007ca066f6aadf154397e965`）；producer adaptation PR #45 与 closeout PR #55 已合并，Issue #44 已按 `completed` 关闭。
+- 归档原因：通用化实现、acceptance evidence、PR closeout、handoff cleanup 与跨仓库 post-merge readback 均已完成；没有剩余的实现或 closeout action。
 - 当前正式入口：`README.md`、`README.zh-CN.md`、`docs/agent_conventions.md`、`docs/workflows/review_fix_workflow.md`。
 - Stage 1 acceptance：已由 Maintainer 批准进入 Stage 2；round-04 review-fix 在 reviewed head `09c0e063214646542666c5dda8057cd46b404d59` 返回 `PASS`，并确认 `RGEN-S1-005` / `RGEN-S1-006` 为 `ACCEPTED`。该记录不等同于 Ready、Issue acceptance 或 merge authorization。
 - Stage 2 canonical review identity：`stage2-main/round-01-review-request`。此前 `main/round-05` 仅作为 Stage 2 初次尝试的历史评审记录保留；按 Stage-scoped round convention，当前 Stage 2 从 `round-01` 重新计数。
@@ -33,8 +33,8 @@
 - Pending ledger 采用两阶段事实模型：下一轮在 trigger 前记录 handoff identity、implementation commit 与 `review state=pending` / `transport state=pending`；精确 `reviewed_head` 由包含该 pending entry 的 canonical handoff commit 及 relay-export 固化，不能在同一 commit 正文中自引用预写其 SHA。Verdict、job、transport phase、output SHA 与 formal-source boundary 仅在结果存在后追加。
 - Stage 3 round-18（`stage3-main/round-18-review-fix`）：implementation commit `fe01aa6cc3146c48e66e21a5d1798b7f77a07d1a`，reviewed head `2a8b973d0bb17ae04c0a5b50ba5a5b4d2fa14d45`，job `8e4bf671-d2e5-4586-b58d-5a729058f41d`。本轮在 trigger 前记录 `review state=pending` / `transport state=pending`，未预写结果；随后 review response 返回 `PASS`，`RGEN-S3-001` 至 `RGEN-S3-022` 全部 `ACCEPTED`。Transport 达到 `TURN_IDLE / completed`，持久化 SHA `80f3df6df8d982244c7753727517ce171050971d1f7d442237dbb9325e69f65a`；MCP 全文具有正确首锚点、唯一末尾 footer 且无历史 verdict，因此本轮完整 `assistant_output` 是正式验收来源。该 PASS 通过 Stage 3 acceptance-review gate，但不自动授权 Stage 3 Maintainer acceptance、PR Ready、merge、Issue acceptance 或 producer Issue #44 closeout。
 - 跨仓库适配跟踪：producer `David-JA/single-crystal-stress#44`，用于记录本仓库 generic helper/config 变化对 single-crystal 现有使用方式的影响，并在本 PR 收尾后完成 producer-side readback。
-- Producer-side readback：已使用 producer 当前 `scripts/tools/check_stage_gate_readiness.py` 对历史 tracked handoff 做 v1.0 relay-export readback，exit code `0`；证据与迁移命令已记录在 Issue #44 comment `5045654662`。当前 producer checkout 无 active handoff，Issue 保持 open，等待未来 live handoff 与 companion PR closeout。
-- 关联 PR：本 spec 与全部 stage 改动进入同一个 PR（Stage 1 段 2 创建）。Stage 3 acceptance 与 README/contract 对齐已完成；PR #2 在 Maintainer 明确 Ready 前保持 Draft，禁止 merge。
+- Producer-side readback：已使用 producer 当前 `scripts/tools/check_stage_gate_readiness.py` 对历史 tracked handoff 做 v1.0 relay-export readback，exit code `0`；证据与迁移命令记录在 Issue #44 comment `5045654662`，最终 post-merge readback 记录在 comment `5275398051`。producer PR #45 已合并（merge commit `9f8401d129962a7ab19197374eb64f25cd404e2d`），closeout PR #55 已合并（merge commit `13cc4fce168b4aaec0aa2d28e83a1ceaf8a2daf1`），Issue #44 已按 `completed` 关闭；producer checkout 无 active handoff。
+- 关联 PR：本 spec 与全部 stage 改动进入同一个 PR（Stage 1 段 2 创建）。Stage 3 acceptance、README/contract 对齐和 Maintainer merge 均已完成；PR #2 于 2026-07-24 合并，merge commit 为 `cdd12b51b3013b36007ca066f6aadf154397e965`。
 - 分支：`codex/relay-generality`，base = 分支创建时的 main tip（`7629293`）。Stage 1 的 round history 与 Stage 2 的 round history 分开计数。
 - transport 基线参照：PR#1 merge 点 `43c33e4`（producer 已验证可用的 completion detection + 单条 PR-comment 指令版本）。
 
@@ -204,7 +204,9 @@ SESSION_LOST -> DISARMED
 ## Closeout boundary
 
 - Stage 3 acceptance-review：`PASS`，`RGEN-S3-001` 至 `RGEN-S3-022` 全部 `ACCEPTED`。
-- Producer adaptation：`single-crystal-stress` PR #45 已合并；producer Issue #44 的 acceptance/closeout 仍由其仓库单独管理。
-- 本仓库 PR #2：当前保持 Draft，merge 不由本 Spec 自动授权。
+- Producer adaptation：`single-crystal-stress` PR #45 已合并；closeout PR #55 已合并；producer Issue #44 已按 `completed` 关闭。
+- 本仓库 PR #2：已于 2026-07-24 合并，merge commit 为 `cdd12b51b3013b36007ca066f6aadf154397e965`。
 - Tracked handoff：已关闭的 PR #1、PR #2 与 Stage 3 review package 已从 current tree 清理，Git history 保留；handoff wording/历史 metadata 未作为新的实质 review gate。
-- Closeout validation：`npm test` 为 `141 passed`；`npm run test:compat` 返回 `compatible=true`；`git diff --check` 通过；Terra medium 第一轮为 PASS-like closeout readiness，未发现实质性 blocker。
+- Post-merge metadata：current pointer 与 archive index 已按 live PR/Issue 状态同步；本次同步不改变 runtime、schema 或 public contract。
+- PR #2 历史 closeout validation：`npm test` 为 `141 passed`；`npm run test:compat` 返回 `compatible=true`；`git diff --check` 通过；Terra medium 第一轮为 PASS-like closeout readiness，未发现实质性 blocker。
+- 2026-08-13 metadata sync validation：`npm test` 为 `151 passed`；`git diff --check` 通过；active pointer 的 stale-state 检索为零；GitHub live readback 确认 PR #2、producer PR #45 与 PR #55 均已合并，Issue #44 为 `closed/completed`。
