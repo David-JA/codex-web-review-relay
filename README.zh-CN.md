@@ -175,6 +175,8 @@ Exporter 由 relay 所有；仓库特定的 stage-gate 治理仍由 producer age
 2. 点击扩展图标，点击 **Arm**。
 3. 弹窗确认会话已 Arm，并显示连接状态。
 
+弹窗显示语义状态（`armed`、`connection`、`sessionState`，以及存在时的 active job），不把租约时间当作会话有效期。Native Messaging 内部使用短时滑动心跳租约：`ARM_SESSION` acknowledgement 中的 `leaseExpiresAt` 只是一个 UTC（`Z`）时间的瞬时快照，后续会由 heartbeat 持续续期；它不是 manual Arm binding 的最终失效时间。不要根据旧 acknowledgement 单独判断 binding 已丢失，应查看弹窗的当前连接状态、实时 `/health` 结果或 review transport 结果。
+
 扩展同时只允许一个手动 Arm 的 ChatGPT 标签页和一个 active review job。第二次点击 **Arm** 返回 `SESSION_ALREADY_ARMED`；job active 时点击 **Arm** / **Disarm** 分别返回 `ACTIVE_JOB_ARM_FORBIDDEN` / `ACTIVE_JOB_DISARM_FORBIDDEN`。如果 armed 标签页关闭、导航、切换 conversation 或丢失 page binding，当前 job 报告 `SESSION_LOST`，extension 随即 Disarm；你必须在目标对话中手动重新 Arm。
 
 评审期间，扩展会按 ChatGPT turn identity 增量提取目标 user turn 之后、下一个 user turn 之前的全部有序 assistant turns，而不是把当前页面上“最新的 assistant bubble”直接当作结果。只有目标 turn 集合完整且 native host 确认收到后，才会发送 `TURN_IDLE`。
@@ -453,6 +455,8 @@ npm run test:compat
 # Native host 冒烟测试（安装后使用实际 compiled launcher）
 npm run smoke:native -- --launcher "$env:LOCALAPPDATA\codex-web-review-relay\codex-web-review-relay.exe"
 ```
+
+仅在当前没有运行中的 relay host 或已 Arm 对话时运行 `smoke:native`。该测试会启动自己的 host，并创建和释放自己的 session；若 live host 或 session 已占用相关资源，测试不会扰动现有 binding，而是立即报告 correlated `SMOKE_BLOCKED:*` 原因（例如 `NATIVE_HOST_ALREADY_RUNNING` 或 `SESSION_ALREADY_ARMED`），不再误报为 transport timeout。
 
 ## 卸载
 

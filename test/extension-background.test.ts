@@ -119,7 +119,13 @@ test("extension waits for lifecycle ACK, acknowledges dispatch receipt and recov
   assert.equal(armRequest.schemaVersion.major, 1);
   assert.equal(armRequest.schemaVersion.minor, 3);
   h.respondTo(firstPort, armRequest, "SESSION_ARMED", {leaseExpiresAt: new Date(Date.now() + 30_000).toISOString()});
-  assert.equal((await armResult).ok, true);
+  const successfulArm = await armResult;
+  assert.equal(successfulArm.ok, true);
+  assert.deepEqual({...successfulArm.state}, {
+    armed: true, sessionId: armRequest.sessionId, tabId: 7, activeJobId: null,
+    sessionState: "ARMED", connection: "connected", lastError: null,
+  });
+  assert.equal("leaseExpiresAt" in successfulArm.state, false);
   const duplicateArm = await h.runtime({kind: "POPUP_ARM"});
   assert.equal(duplicateArm.ok, false);
   assert.equal(duplicateArm.error, "SESSION_ALREADY_ARMED");

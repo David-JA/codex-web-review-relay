@@ -177,6 +177,8 @@ The extension ID is fixed: `kkdijpckhlminpolkllmmkldlljakfem`.
 2. Click the extension icon and click **Arm**.
 3. The popup confirms the session is armed and shows connection status.
 
+The popup reports semantic state (`armed`, `connection`, `sessionState`, and the active job when present), not a lease deadline. Native Messaging internally uses a short, sliding heartbeat lease: `leaseExpiresAt` in an `ARM_SESSION` acknowledgement is a point-in-time UTC (`Z`) snapshot and is renewed by heartbeats. It is not the expiry time of the manual Arm binding. Do not diagnose a lost binding from an old acknowledgement; use the popup's current connection state, a fresh `/health` response, or the review transport result.
+
 The extension permits one manually armed ChatGPT tab and one active review job. A second **Arm** returns `SESSION_ALREADY_ARMED`; while a job is active, **Arm** and **Disarm** return `ACTIVE_JOB_ARM_FORBIDDEN` and `ACTIVE_JOB_DISARM_FORBIDDEN`. If the armed tab closes, navigates, changes conversation, or loses its page binding, the current job reports `SESSION_LOST`, the extension disarms, and you must manually Arm the intended conversation again.
 
 During a review, the extension tracks the assistant response by the ChatGPT turn identity and incrementally harvests every ordered assistant turn after the target user turn and before the next user turn. It does not treat whichever assistant bubble is currently newest as the result. A `TURN_IDLE` result is sent only after the target turn set is complete and the native host acknowledges receipt.
@@ -456,6 +458,8 @@ npm run test:compat
 # Smoke test the compiled native host after installation
 npm run smoke:native -- --launcher "$env:LOCALAPPDATA\codex-web-review-relay\codex-web-review-relay.exe"
 ```
+
+Run `smoke:native` only when no relay host or conversation is currently active. The smoke test starts a host and creates and releases its own session; if a live host or session already owns those resources, it exits without disturbing the existing binding and reports the correlated `SMOKE_BLOCKED:*` cause (for example, `NATIVE_HOST_ALREADY_RUNNING` or `SESSION_ALREADY_ARMED`) rather than a transport timeout.
 
 ## Uninstall
 
