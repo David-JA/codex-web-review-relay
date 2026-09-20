@@ -456,7 +456,7 @@ npm run test:compat
 npm run smoke:native -- --launcher "$env:LOCALAPPDATA\codex-web-review-relay\codex-web-review-relay.exe"
 ```
 
-仅在当前没有运行中的 relay host 或已 Arm 对话时运行 `smoke:native`。该测试会启动自己的 host，并创建和释放自己的 session；若 live host 或 session 已占用相关资源，测试不会扰动现有 binding，而是立即报告 correlated `SMOKE_BLOCKED:*` 原因（例如 `NATIVE_HOST_ALREADY_RUNNING` 或 `SESSION_ALREADY_ARMED`），不再误报为 transport timeout。
+仅在当前既没有运行中的 relay host、也没有已 Arm 对话时运行 `smoke:native`。该测试会启动自己的 host，并创建和释放自己的 session；若 live host 或 session 已占用相关资源，测试不会扰动现有 binding，而是立即报告 correlated `SMOKE_BLOCKED:*` 原因（例如 `NATIVE_HOST_ALREADY_RUNNING` 或 `SESSION_ALREADY_ARMED`），不再误报为 transport timeout。
 
 ## 卸载
 
