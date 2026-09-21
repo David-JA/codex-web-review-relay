@@ -75,6 +75,24 @@ test("event-driven wait and session lease are bounded", () => withDatabase(async
   assert.equal(store.getActiveSession(new Date(now.getTime() + 1_000)), null);
 }));
 
+test("heartbeat renews the native session lease beyond the Arm-time snapshot", () => withDatabase((store) => {
+  const now = new Date("2026-07-20T00:00:00.000Z");
+  const armed = store.armSession({
+    sessionId: "session-1",
+    extensionVersion: "0.1.0",
+    schemaMajor: 1,
+    schemaMinor: 0,
+    leaseMs: 1_000,
+    now,
+  });
+  const renewed = store.heartbeat("session-1", 1_000, new Date(now.getTime() + 500));
+
+  assert.equal(armed.lease_expires_at, "2026-07-20T00:00:01.000Z");
+  assert.equal(renewed.lease_expires_at, "2026-07-20T00:00:01.500Z");
+  assert.ok(store.getActiveSession(new Date(now.getTime() + 1_499)));
+  assert.equal(store.getActiveSession(new Date(now.getTime() + 1_500)), null);
+}));
+
 test("waitFor closes the subscribe/read lost-wakeup window", () => withDatabase(async (store) => {
   const coordinator = new JobCoordinator(store);
   const relay = relayFixture();

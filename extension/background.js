@@ -31,6 +31,11 @@ function reconnectDelay(attempt) { return Math.min(8_000, 250 * (2 ** attempt)) 
 function clearHeartbeat() { if (heartbeat !== null) clearInterval(heartbeat); heartbeat = null; }
 function startHeartbeat() { clearHeartbeat(); heartbeat = setInterval(() => nativeRequest("HEARTBEAT", {sessionId: armed?.sessionId}).catch(() => {}), 10_000); }
 function persistArmed() { if (armed) return chrome.storage.local.set({[SESSION_KEY]: {...armed}}); return Promise.resolve(); }
+function popupState() {
+  return armed
+    ? {armed: true, sessionId: armed.sessionId, tabId: armed.tabId, activeJobId: armed.activeJobId, sessionState: armed.state, connection: armed.connection, lastError: armed.lastError}
+    : {armed: false};
+}
 function rejectPending(error) { for (const {reject, timer} of pending.values()) { clearTimeout(timer); reject(error); } pending.clear(); }
 function ensurePort() {
   if (port) return port;
@@ -236,7 +241,7 @@ async function arm() {
     if (typeof state.documentId !== "string" || state.documentId.length === 0) throw new Error("PAGE_DOCUMENT_ID_UNSUPPORTED");
     const sessionId = uuid();
     reconnectDisabled = false;
-    const result = await nativeRequest("ARM_SESSION", {sessionId, extensionVersion: EXTENSION_VERSION, capabilities: CAPABILITIES});
+    await nativeRequest("ARM_SESSION", {sessionId, extensionVersion: EXTENSION_VERSION, capabilities: CAPABILITIES});
     armed = {
       sessionId, tabId: tab.id, conversationIdentity: state.conversationIdentity,
       bindingGeneration: uuid(), documentId: state.documentId,
@@ -246,7 +251,7 @@ async function arm() {
     reconnectAttempts = 0; startHeartbeat();
     await chrome.storage.local.set({[SESSION_KEY]: armed});
     diagnostic("info", "session_armed", {});
-    return {sessionId, tabId: tab.id, leaseExpiresAt: result.leaseExpiresAt};
+    return popupState();
   });
 }
 async function releaseBinding(current = armed) {
@@ -337,7 +342,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   }
   if (message.kind === "POPUP_ARM") { arm().then((state) => respond({ok: true, state}), (error) => respond({ok: false, error: error.message})); return true; }
   if (message.kind === "POPUP_DISARM") { disarm().then((state) => respond({ok: true, state}), (error) => respond({ok: false, error: error.message})); return true; }
-  if (message.kind === "POPUP_STATUS") respond({ok: true, state: armed ? {armed: true, sessionId: armed.sessionId, tabId: armed.tabId, activeJobId: armed.activeJobId, sessionState: armed.state, connection: armed.connection, lastError: armed.lastError} : {armed: false}});
+  if (message.kind === "POPUP_STATUS") respond({ok: true, state: popupState()});
 });
 chrome.tabs.onRemoved.addListener((tabId) => {
   if (armed?.tabId !== tabId) return;

@@ -13,14 +13,19 @@ let stderr = "";
 child.stderr.on("data", (chunk) => { stderr = (stderr + chunk.toString("utf8")).slice(-4_000); });
 child.stdout.on("data", (chunk) => messages.push(...decoder.push(chunk) as Record<string, unknown>[]));
 
-async function waitFor(type: string, timeoutMs = 5_000): Promise<Record<string, unknown>> {
+async function waitForResponse(requestId: string, type: string, timeoutMs = 5_000): Promise<Record<string, unknown>> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const found = messages.find((message) => message.type === type);
-    if (found) return found;
+    const found = messages.find((message) => message.responseToRequestId === requestId);
+    if (found?.type === "ERROR") {
+      const nativeCode = String(found.errorCode ?? "NATIVE_ERROR");
+      const smokeCode = nativeCode.includes("EADDRINUSE") ? "NATIVE_HOST_ALREADY_RUNNING" : nativeCode;
+      throw new Error(`SMOKE_BLOCKED:${smokeCode}:${String(found.message ?? "")}`);
+    }
+    if (found?.type === type) return found;
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
-  throw new Error(`SMOKE_TIMEOUT:${type}:${stderr}`);
+  throw new Error(`SMOKE_TIMEOUT:${requestId}:${type}:${stderr}`);
 }
 
 const sessionId = randomUUID();
@@ -28,12 +33,12 @@ child.stdin.write(encodeNativeMessage({
   schemaVersion: NATIVE_SCHEMA_VERSION, type: "ARM_SESSION", requestId: "smoke-arm",
   sessionId, extensionVersion: "0.1.0",
 }));
-const armed = await waitFor("SESSION_ARMED");
+const armed = await waitForResponse("smoke-arm", "SESSION_ARMED");
 if (armed.responseToRequestId !== "smoke-arm") throw new Error("SMOKE_ARM_CORRELATION_FAILED");
 child.stdin.write(encodeNativeMessage({
   schemaVersion: NATIVE_SCHEMA_VERSION, type: "DISARM_SESSION", requestId: "smoke-disarm", sessionId,
 }));
-const disarmed = await waitFor("SESSION_DISARMED");
+const disarmed = await waitForResponse("smoke-disarm", "SESSION_DISARMED");
 if (disarmed.responseToRequestId !== "smoke-disarm") throw new Error("SMOKE_DISARM_CORRELATION_FAILED");
 child.stdin.end();
 await new Promise<void>((resolve, reject) => {
