@@ -171,6 +171,8 @@ Existing installations do not migrate themselves. Re-running the v0.3.0 installe
 
 The extension ID is fixed: `kkdijpckhlminpolkllmmkldlljakfem`.
 
+Before arming, **Check page** in the extension popup runs a read-only check of the current conversation DOM. It reports composer availability, observed user/assistant turn counts, unresolved shells, assistant text lengths, generation state and the last assistant turn's completion evidence. It does not send a message, arm a session, connect to the native host, or return conversation text. Counts cover the currently mounted DOM, so virtualized history may be absent. A successful check is not an end-to-end transport test. After updating an unpacked extension, reload it in the extension manager and refresh ChatGPT before checking again.
+
 ### 5. Arm a conversation
 
 1. Open (or create) a ChatGPT conversation you want to use as the reviewer.

@@ -40,6 +40,9 @@ function harness() {
   const tabUpdated = event();
   const ports: ReturnType<typeof port>[] = [];
   const storage = new Map<string, any>();
+  const tabMessages: Array<{tabId: number, message: any}> = [];
+  let pageDiagnosticResponse: any = {ok: true, page: {composerReady: true}};
+  let pageDiagnosticError: Error | null = null;
   let diagnosticResponse = (message: any) => ({
     schemaVersion: {major: 1, minor: 3}, type: "DIAGNOSTIC_ACK", responseToRequestId: message.requestId,
     persisted: true, disposition: "appended",
@@ -61,6 +64,11 @@ function harness() {
     tabs: {
       async query() { return [{id: 7, url: conversationIdentity}]; },
       async sendMessage(_tabId: number, message: any) {
+        tabMessages.push({tabId: _tabId, message});
+        if (message.kind === "GET_PAGE_DIAGNOSTICS") {
+          if (pageDiagnosticError) throw pageDiagnosticError;
+          return pageDiagnosticResponse;
+        }
         if (message.kind === "GET_PAGE_STATE") return {ok: true, adapterReady: true, conversationIdentity, documentId};
         if (message.kind === "DISPATCH_TRIGGER" || message.kind === "RECONCILE_TRIGGER") return {ok: true};
         throw new Error("UNSUPPORTED_TEST_TAB_MESSAGE");
@@ -99,7 +107,9 @@ function harness() {
   }
 
   return {
-    ports, runtime, tabUpdated,
+    ports, runtime, tabUpdated, tabMessages,
+    setPageDiagnosticResponse(value: any) { pageDiagnosticResponse = value; },
+    setPageDiagnosticError(value: Error) { pageDiagnosticError = value; },
     setConversation(value: string) { conversationIdentity = value; },
     setDiagnosticResponse(value: (message: any) => any) { diagnosticResponse = value; },
     diagnosticQueue() { return storage.get("reviewRelayDiagnosticsV1") ?? []; },
@@ -484,4 +494,43 @@ test("diagnostic queue is retained for a correlated ACK without persisted eviden
   });
   await waitFor(() => h.diagnosticQueue().length > 0);
   assert.ok(h.diagnosticQueue().length > 0);
+});
+
+
+test("popup page check only reads the active tab without native connection or Arm", async () => {
+  const h = harness();
+  const before = await h.runtime({kind: "POPUP_STATUS"});
+  const page = {
+    composerReady: true, generating: false, userTurns: 2, assistantTurns: 2,
+    unresolvedTurns: 0, assistantCharacters: [8, 15], lastAssistantComplete: true,
+  };
+  h.setPageDiagnosticResponse({ok: true, page});
+  const result = await h.runtime({kind: "POPUP_CHECK_PAGE"});
+  assert.deepEqual(result, {ok: true, page});
+  assert.deepEqual(h.tabMessages.map(({tabId, message}) => ({tabId, message: {...message}})), [
+    {tabId: 7, message: {kind: "GET_PAGE_DIAGNOSTICS"}},
+  ]);
+  assert.equal(h.ports.length, 0);
+  assert.deepEqual(await h.runtime({kind: "POPUP_STATUS"}), before);
+  assert.equal(h.diagnosticQueue().length, 0);
+});
+
+test("popup page check passes content errors and reports unavailable content scripts", async () => {
+  const h = harness();
+  h.setPageDiagnosticResponse({ok: false, errorCode: "COMPOSER_IDENTITY_MISMATCH"});
+  assert.deepEqual(await h.runtime({kind: "POPUP_CHECK_PAGE"}), {ok: false, errorCode: "COMPOSER_IDENTITY_MISMATCH"});
+  h.setPageDiagnosticError(new Error("CONTENT_SCRIPT_UNAVAILABLE"));
+  assert.deepEqual({...await h.runtime({kind: "POPUP_CHECK_PAGE"})}, {ok: false, error: "CONTENT_SCRIPT_UNAVAILABLE"});
+  assert.equal(h.ports.length, 0);
+  assert.equal((await h.runtime({kind: "POPUP_STATUS"})).state.armed, false);
+  assert.ok(h.tabMessages.every(({message}) => message.kind === "GET_PAGE_DIAGNOSTICS"));
+});
+
+test("popup page check rejects a non-ChatGPT active tab before messaging or connecting", async () => {
+  const h = harness();
+  h.setConversation("https://example.com/");
+  assert.deepEqual({...await h.runtime({kind: "POPUP_CHECK_PAGE"})}, {ok: false, error: "ACTIVE_TAB_NOT_CHATGPT"});
+  assert.equal(h.tabMessages.length, 0);
+  assert.equal(h.ports.length, 0);
+  assert.equal((await h.runtime({kind: "POPUP_STATUS"})).state.armed, false);
 });

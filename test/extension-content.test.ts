@@ -27,6 +27,11 @@ function harness(ackDelayMs = 0) {
   let userTurnAckFailures = 0;
   let draftUnsent = false;
   let trackedResumeError = false;
+  let pageDiagnosticFailure: {stage: string, message: string} | null = null;
+  let pageDiagnosticRecords: any[] = [];
+  const diagnosticFailure = (stage: string) => {
+    if (pageDiagnosticFailure?.stage === stage) throw new Error(pageDiagnosticFailure.message);
+  };
   const runtimeListeners: Array<(message: any, sender: any, respond: (value: any) => void) => boolean | void> = [];
   let observerCallback: (() => void) | null = null;
   class MutationObserver {
@@ -35,7 +40,13 @@ function harness(ackDelayMs = 0) {
     disconnect() {}
   }
   const adapter = {
-    pageSupported: () => true,
+    pageSupported: () => { diagnosticFailure("page"); return true; },
+    composer: () => { diagnosticFailure("composer"); return {}; },
+    createTurnTracker: (_document: unknown, captureBaseline: boolean) => {
+      diagnosticFailure("tracker");
+      assert.equal(captureBaseline, false);
+      return {order: pageDiagnosticRecords.map((record) => record.key), records: new Map(pageDiagnosticRecords.map((record) => [record.key, record]))};
+    },
     dispatch: () => { calls.dispatch += 1; return {baseline: new Set(), user: {}}; },
     dispatchTracked: () => { calls.dispatch += 1; return {tracker: {}, userRecord: {key: "target-user"}}; },
     resumeDraft: () => { calls.resumeDraft += 1; return {baseline: new Set(), user: {}}; },
@@ -72,7 +83,7 @@ function harness(ackDelayMs = 0) {
     },
     trackedAssistantTurnsAfter: () => assistant ? assistantOutputs.map((innerText, index) => ({key: `assistant-${index}`, innerText})) : [],
     turnRecordText: (record: any) => record.innerText ?? "",
-    trackedAssistantComplete: () => assistantComplete && !codeCopy,
+    trackedAssistantComplete: () => { diagnosticFailure("completion"); return assistantComplete && !codeCopy; },
     assistantTurnsAfter: () => assistant ? assistantOutputs.map((innerText) => ({innerText})) : [],
     rawText: (node: any) => node?.innerText ?? "",
     rawTurnText: (_document: unknown, _node: any) => assistantOutputs.join("\n\n"),
@@ -151,6 +162,10 @@ function harness(ackDelayMs = 0) {
     dispatch,
     dispatchRaw,
     reconcile,
+    pageDiagnostics() { return new Promise<any>((resolveResponse) => runtimeListeners[0]({kind: "GET_PAGE_DIAGNOSTICS"}, {}, resolveResponse)); },
+    setPageDiagnosticRecords(value: any[]) { pageDiagnosticRecords = value; },
+    setPageDiagnosticFailure(stage: string, message: string) { pageDiagnosticFailure = {stage, message}; },
+    monitorStarted() { return observerCallback !== null; },
     mutate() { observerCallback?.(); },
     setUser(value: boolean) { user = value; },
     setAssistant(value: boolean) { assistant = value; },
@@ -398,4 +413,57 @@ test("content monitor reports a bounded timeout after the exact user turn", asyn
   await waitFor(() => h.events.includes("USER_TURN_ACKED"));
   await waitFor(() => h.events.includes("TURN_TIMEOUT"), 1_000);
   assert.equal(h.events.includes("TURN_IDLE"), false);
+});
+
+
+test("page diagnostics returns only counts and completion state without conversation text or dispatch", async () => {
+  const h = harness();
+  const userSecret = "private user envelope";
+  const firstSecret = "private assistant reasoning";
+  const lastSecret = "private assistant verdict";
+  h.setPageDiagnosticRecords([
+    {key: "private-user-id", role: "user", innerText: userSecret},
+    {key: "private-assistant-id", role: "assistant", innerText: firstSecret},
+    {key: "private-unknown-id", role: null, innerText: "unhydrated content"},
+    {key: "private-final-id", role: "assistant", innerText: lastSecret},
+  ]);
+  h.setGenerating(true);
+  h.setAssistantComplete(true);
+  const result = await h.pageDiagnostics();
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), {ok: true, page: {
+    composerReady: true, generating: true, userTurns: 1, assistantTurns: 2,
+    unresolvedTurns: 1, assistantCharacters: [firstSecret.length, lastSecret.length], lastAssistantComplete: true,
+  }});
+  for (const secret of [userSecret, firstSecret, lastSecret, "private-user-id", "private-final-id", "unhydrated content"]) {
+    assert.equal(JSON.stringify(result).includes(secret), false);
+  }
+  assert.equal(h.calls.dispatch + h.calls.resumeDraft + h.calls.resumeDraftTracked, 0);
+  assert.equal(h.lifecycleMessages.length, 0);
+  assert.equal(h.monitorStarted(), false);
+});
+
+test("page diagnostics handles an empty conversation without claiming assistant completion", async () => {
+  const h = harness();
+  h.setAssistantComplete(true);
+  const result = await h.pageDiagnostics();
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), {ok: true, page: {
+    composerReady: true, generating: false, userTurns: 0, assistantTurns: 0,
+    unresolvedTurns: 0, assistantCharacters: [], lastAssistantComplete: false,
+  }});
+  assert.equal(h.lifecycleMessages.length, 0);
+  assert.equal(h.calls.dispatch, 0);
+});
+
+test("page diagnostics reports parser and composer failures as bounded error codes with no side effects", async () => {
+  for (const [stage, code] of [["page", "PAGE_IDENTITY_UNSUPPORTED"], ["composer", "COMPOSER_IDENTITY_MISMATCH"], ["tracker", "TURN_ROLE_AMBIGUOUS"], ["completion", "COMPLETION_UNAVAILABLE"]]) {
+    const h = harness();
+    h.setPageDiagnosticRecords([{key: "private-message-id", role: "assistant", innerText: "private output"}]);
+    h.setPageDiagnosticFailure(stage, `${code}:private error detail`);
+    const result = await h.pageDiagnostics();
+    assert.deepEqual({...result}, {ok: false, errorCode: code});
+    assert.equal(JSON.stringify(result).includes("private"), false);
+    assert.equal(h.calls.dispatch + h.calls.resumeDraft + h.calls.resumeDraftTracked, 0);
+    assert.equal(h.lifecycleMessages.length, 0);
+    assert.equal(h.monitorStarted(), false);
+  }
 });

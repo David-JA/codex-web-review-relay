@@ -169,6 +169,8 @@ Exporter 由 relay 所有；仓库特定的 stage-gate 治理仍由 producer age
 
 扩展 ID 固定为：`kkdijpckhlminpolkllmmkldlljakfem`。
 
+Arm 前可点击扩展弹窗的 **Check page**，只读检查当前对话 DOM：输入框是否可用、已观察到的用户/助手消息轮数、尚未加载内容的容器、助手正文长度、生成状态和最后一条助手回复的完成标记。它不发送消息、不 Arm、不连接 native host，也不返回对话正文。计数只覆盖当前挂载的 DOM，可能不包含被虚拟化的历史消息；检查通过不等于端到端传输通过。更新已解压的扩展后，先在扩展管理器重新加载，再刷新 ChatGPT 页面并检查。
+
 ### 5. Arm 一个对话
 
 1. 打开（或新建）你想用作评审者的 ChatGPT 对话。

@@ -1,8 +1,10 @@
 (function (scope) {
   "use strict";
-  const COMPOSER_SELECTORS = ["#prompt-textarea", "[contenteditable='true'][data-lexical-editor='true']"];
+  const COMPOSER_SELECTORS = ["#prompt-textarea", "[contenteditable='true'][data-lexical-editor='true']", "form[data-chatgpt-composer] [contenteditable='true'][data-composer-markdown][role='textbox']"];
   const SEND_SELECTOR = "[data-testid='send-button']";
+  const MODERN_UNIT_SELECTOR = "[data-chatgpt-search-unit-key][data-chatgpt-search-message-ids]";
   const STOP_SELECTOR = "[data-testid='stop-button']";
+  const MODERN_STOP_SELECTOR = "form[data-chatgpt-composer] button[aria-label='停止']";
   const TURN_SELECTOR = "[data-message-author-role]";
   const OUTER_TURN_SELECTOR = "[data-turn-id], [data-testid^='conversation-turn-'], [data-testid='conversation-turn'], [id^='conversation-turn-']";
   function normalizedText(node) {
@@ -27,7 +29,7 @@
     return true;
   }
   function composer(document) { return unique(document, COMPOSER_SELECTORS, "COMPOSER_IDENTITY_MISMATCH"); }
-  function sendButton(document) { const button = unique(document, [SEND_SELECTOR], "SEND_BUTTON_IDENTITY_MISMATCH"); if (button.disabled || button.getAttribute?.("aria-disabled") === "true") throw new Error("SEND_BUTTON_DISABLED"); return button; }
+  function sendButton(document) { const button = unique(document, [SEND_SELECTOR, "form[data-chatgpt-composer] button[type='submit']"], "SEND_BUTTON_IDENTITY_MISMATCH"); if (button.disabled || button.getAttribute?.("aria-disabled") === "true") throw new Error("SEND_BUTTON_DISABLED"); return button; }
   async function writeComposer(document, node, text) {
     node.focus?.();
     if (typeof node.value === "string") { node.value = text; node.dispatchEvent?.(new Event("input", {bubbles: true})); }
@@ -48,14 +50,59 @@
     }, "COMPOSER_READBACK_MISMATCH");
   }
   function snapshotTurns(document) {
-    const snapshot = new Set(Array.from(document.querySelectorAll(TURN_SELECTOR)));
+    const snapshot = new Set(turns(document));
     snapshot.turnIdentities = new Set(Array.from(snapshot).map(stableTurnIdentity).filter((identity) => typeof identity === "string"));
     snapshot.unstableTurns = new Set(Array.from(snapshot).filter((node) => typeof stableTurnIdentity(node) !== "string"));
     snapshot.unstableTurnCount = Array.from(snapshot).filter((node) => typeof stableTurnIdentity(node) !== "string").length;
     return snapshot;
   }
-  function turns(document) { return Array.from(document.querySelectorAll(TURN_SELECTOR)); }
+  function turnRole(node) {
+    const legacy = node?.getAttribute?.("data-message-author-role");
+    if (legacy) return legacy;
+    return node?.getAttribute?.("data-chatgpt-search-unit-key")?.match(/:(user|assistant)$/)?.[1] ?? null;
+  }
+  function inDocumentOrder(nodes) {
+    return [...new Set(nodes)].sort((left, right) => {
+      const relation = left.compareDocumentPosition?.(right) ?? 0;
+      return relation & 4 ? -1 : relation & 2 ? 1 : 0;
+    });
+  }
+  function turns(document) {
+    return inDocumentOrder([
+      ...document.querySelectorAll(TURN_SELECTOR),
+      ...Array.from(document.querySelectorAll(MODERN_UNIT_SELECTOR)).filter((node) => turnRole(node)),
+    ]);
+  }
+  function modernShell(node) { return node?.closest?.("[data-turn-key]") ?? null; }
+  function modernFragments(node, role) {
+    if (!node?.getAttribute?.("data-chatgpt-search-unit-key")) return null;
+    if (role === "user") {
+      const contentNode = node.querySelector?.("[data-user-message-bubble='true'] .whitespace-pre-wrap");
+      if (!contentNode) return [];
+      const ids = [...new Set((node.getAttribute("data-chatgpt-search-message-ids") ?? "").split(/\s+/).filter(Boolean))];
+      if (ids.length !== 1) throw new Error("MESSAGE_IDENTITY_AMBIGUOUS");
+      return [{key: `message-id:${ids[0]}`, node, contentNode}];
+    }
+    const fragments = new Map();
+    for (const message of node.querySelectorAll?.("[data-chatgpt-selection-message-id]") ?? []) {
+      if (message.closest?.(MODERN_UNIT_SELECTOR) !== node) continue;
+      const id = message.getAttribute("data-chatgpt-selection-message-id");
+      const contentNode = message.querySelector("[data-markdown-text-style='assistant-message']");
+      if (!id || !contentNode) continue;
+      if (fragments.has(id)) throw new Error("MESSAGE_IDENTITY_AMBIGUOUS");
+      fragments.set(id, {key: `message-id:${id}`, node, contentNode});
+    }
+    return [...fragments.values()];
+  }
+  function turnText(node, raw = false) {
+    const fragments = modernFragments(node, turnRole(node));
+    if (fragments === null) return raw ? rawText(node) : normalizedText(node);
+    return fragments.map(({contentNode}) => raw ? rawText(contentNode) : normalizedText(contentNode)).filter(Boolean).join(raw ? "\n\n" : "\n").trim();
+  }
   function stableTurnIdentity(node) {
+    const modern = modernShell(node);
+    const role = turnRole(node);
+    if (modern && role) return `turn-key:${modern.getAttribute("data-turn-key")}:${role}`;
     const outerTurn = node?.closest?.("[data-turn-id]")
       ?? node?.closest?.("[data-testid^='conversation-turn-']")
       ?? node?.closest?.("[data-testid='conversation-turn']")
@@ -95,12 +142,12 @@
       }).map((candidate) => rawTurnText(document, candidate)).filter((text) => text.length > 0).join("\n\n").trim();
     }
     const identity = stableTurnIdentity(node);
-    if (identity === null) return rawText(node);
-    const parts = Array.from(document.querySelectorAll(TURN_SELECTOR))
-      .filter((candidate) => candidate.getAttribute("data-message-author-role") === "assistant" && stableTurnIdentity(candidate) === identity)
-      .map(rawText)
+    if (identity === null) return turnText(node, true);
+    const parts = turns(document)
+      .filter((candidate) => turnRole(candidate) === "assistant" && stableTurnIdentity(candidate) === identity)
+      .map((candidate) => turnText(candidate, true))
       .filter((text) => text.length > 0);
-    return (parts.length > 0 ? parts.join("\n\n") : rawText(node)).trim();
+    return (parts.length > 0 ? parts.join("\n\n") : turnText(node, true)).trim();
   }
   function turnContainer(node) {
     return node?.closest?.("[data-turn-id]")
@@ -119,6 +166,20 @@
       });
       return uniqueNodes.length > 0 && uniqueNodes.every((candidate) => isAssistantComplete(document, candidate));
     }
+    const modern = modernShell(node);
+    if (modern && turnRole(node) === "assistant") {
+      if (modern.isConnected === false || node.isConnected === false) return false;
+      const units = Array.from(modern.querySelectorAll(MODERN_UNIT_SELECTOR)).filter((unit) => modernShell(unit) === modern && turnRole(unit));
+      const last = units.at(-1);
+      if (!last || turnRole(last) !== "assistant") return false;
+      for (const actions of modern.querySelectorAll(".turn-action-controls")) {
+        if (modernShell(actions) !== modern || actions.closest(MODERN_UNIT_SELECTOR)
+          || actions.closest("pre, code, [data-markdown-text-style]") || !((last.compareDocumentPosition(actions) ?? 0) & 4)) continue;
+        const copy = actions.querySelector("button[aria-label='Copy'], button[aria-label='复制']");
+        if (copy && !copy.closest("pre, code, [data-markdown-text-style]")) return true;
+      }
+      return false;
+    }
     const container = turnContainer(node);
     if (!container?.querySelector) return false;
     if (container.querySelector("[data-testid='copy-turn-action-button'], [data-testid='copy-message-button']")) return true;
@@ -133,13 +194,13 @@
   }
   function assertUnstableBaselineRetained(document, baseline) {
     if (!baseline?.unstableTurns || baseline.unstableTurns.size === 0) return;
-    const current = new Set(Array.from(document.querySelectorAll(TURN_SELECTOR)));
+    const current = new Set(turns(document));
     if (Array.from(baseline.unstableTurns).some((node) => !current.has(node))) throw new Error("TURN_IDENTITY_UNSTABLE");
   }
   function newTurns(document, baseline, role, exactText) {
     const records = [];
-    for (const node of Array.from(document.querySelectorAll(TURN_SELECTOR))) {
-      if (isBaselineTurn(node, baseline) || node.getAttribute("data-message-author-role") !== role) continue;
+    for (const node of turns(document)) {
+      if (isBaselineTurn(node, baseline) || turnRole(node) !== role) continue;
       const identity = stableTurnIdentity(node);
       if (typeof identity !== "string") assertUnstableBaselineRetained(document, baseline);
       const record = identity === null ? null : records.find((candidate) => candidate.identity === identity);
@@ -150,7 +211,7 @@
       .map((record) => record.nodes[record.nodes.length - 1]);
   }
   function normalizedGroupedText(nodes) {
-    return nodes.map(normalizedText).filter((text) => text.length > 0).join("\n").trim();
+    return nodes.map((node) => turnText(node)).filter((text) => text.length > 0).join("\n").trim();
   }
   function findAnchoredTurnIndex(all, anchor) {
     const direct = all.indexOf(anchor);
@@ -164,7 +225,7 @@
   function groupedAssistantTurns(nodes) {
     const records = [];
     for (const node of nodes) {
-      if (node.getAttribute("data-message-author-role") !== "assistant") continue;
+      if (turnRole(node) !== "assistant") continue;
       const identity = stableTurnIdentity(node);
       const record = identity === null ? null : records.find((candidate) => candidate.identity === identity);
       if (record) record.nodes.push(node);
@@ -176,7 +237,7 @@
     const all = turns(document);
     const index = findAnchoredTurnIndex(all, userAnchor);
     const tail = all.slice(index + 1);
-    const nextUser = tail.findIndex((node) => node.getAttribute("data-message-author-role") === "user");
+    const nextUser = tail.findIndex((node) => turnRole(node) === "user");
     return groupedAssistantTurns(nextUser >= 0 ? tail.slice(0, nextUser) : tail);
   }
   function newTurn(document, baseline, role, exactText) {
@@ -210,7 +271,7 @@
   }
   function reconcile(document, envelope) {
     const all = turns(document);
-    const users = all.filter((node) => node.getAttribute("data-message-author-role") === "user" && normalizedText(node) === envelope.trim());
+    const users = all.filter((node) => turnRole(node) === "user" && turnText(node) === envelope.trim());
     if (users.length > 1) throw new Error("RECONCILE_USER_TURN_AMBIGUOUS");
     if (users.length === 1) {
       const assistants = assistantTurnsAfter(document, users[0]);
@@ -226,8 +287,9 @@
     const baseline = snapshotTurns(document);
     return clickAndConfirm(document, {baseline, input}, envelope);
   }
-  function isGenerating(document) { return document.querySelectorAll(STOP_SELECTOR).length === 1; }
-  function isResponseIdle(document) { return document.querySelectorAll(STOP_SELECTOR).length === 0; }
+  function stopButtons(document) { return new Set([...document.querySelectorAll(STOP_SELECTOR), ...document.querySelectorAll(MODERN_STOP_SELECTOR)]); }
+  function isGenerating(document) { return stopButtons(document).size > 0; }
+  function isResponseIdle(document) { return stopButtons(document).size === 0; }
   function isIdle(document) {
     if (!isResponseIdle(document)) return false;
     try { composer(document); return true; }
@@ -235,7 +297,7 @@
   }
   function turnObservation(document, baseline, envelope) {
     const all = turns(document);
-    const candidates = all.filter((node) => node.getAttribute("data-message-author-role") === "user");
+    const candidates = all.filter((node) => turnRole(node) === "user");
     const records = [];
     for (const node of candidates) {
       const identity = stableTurnIdentity(node);
@@ -257,7 +319,7 @@
     if (role === "user") return node.querySelector(".whitespace-pre-wrap");
     return node.querySelector(".markdown.prose") ?? node.querySelector(".markdown");
   }
-  function turnShells(document) { return Array.from(document.querySelectorAll(OUTER_TURN_SELECTOR)); }
+  function turnShells(document) { return inDocumentOrder([...document.querySelectorAll(OUTER_TURN_SELECTOR), ...document.querySelectorAll("[data-turn-key]")]); }
   function mergeObservedOrder(previous, observed) {
     const merged = previous.slice();
     if (merged.length === 0) return observed.slice();
@@ -291,6 +353,18 @@
     const passByKey = new Map();
     const observedOrder = [];
     for (const shell of turnShells(document)) {
+      const modernKey = shell.getAttribute?.("data-turn-key");
+      if (modernKey) {
+        // New ChatGPT shells contain both roles; reserve both positions even
+        // while virtualized, so an unknown boundary can never be skipped.
+        for (const role of ["user", "assistant"]) {
+          const key = `turn-key:${modernKey}:${role}`;
+          if (!observedOrder.includes(key)) observedOrder.push(key);
+          if (!tracker.records.has(key)) tracker.records.set(key, {key, identity: key, role: null, fragments: new Map(), nodes: [], shell});
+          else tracker.records.get(key).shell = shell;
+        }
+        continue;
+      }
       const identity = stableTurnIdentity(shell);
       const key = identity !== null ? identity : shell;
       if (!observedOrder.includes(key)) observedOrder.push(key);
@@ -301,7 +375,7 @@
       }
     }
     for (const node of turns(document)) {
-      const role = node.getAttribute("data-message-author-role");
+      const role = turnRole(node);
       if (role !== "user" && role !== "assistant") continue;
       const identity = stableTurnIdentity(node);
       const key = identity !== null ? identity : node;
@@ -330,31 +404,36 @@
       record.role = group.role;
       record.nodes = group.nodes.slice();
       const liveFragmentKeys = new Set();
+      let fragmentIndex = 0;
       group.nodes.forEach((node, index) => {
-        const fragmentKey = messageIdentity(node, index);
-        const contentNode = messageContentNode(node, group.role);
-        if (!contentNode) return;
-        liveFragmentKeys.add(fragmentKey);
-        record.fragments.set(fragmentKey, {
-          key: fragmentKey,
-          node,
-          contentNode,
-          normalized: normalizedText(contentNode),
-          raw: rawText(contentNode),
-          index,
-        });
+        const modern = modernFragments(node, group.role);
+        const fragments = modern ?? [{key: messageIdentity(node, index), node, contentNode: messageContentNode(node, group.role)}];
+        for (const {key: fragmentKey, contentNode} of fragments) {
+          if (!contentNode) continue;
+          if (modern !== null && liveFragmentKeys.has(fragmentKey)) throw new Error("MESSAGE_IDENTITY_AMBIGUOUS");
+          liveFragmentKeys.add(fragmentKey);
+          record.fragments.set(fragmentKey, {
+            key: fragmentKey, node, contentNode,
+            normalized: normalizedText(contentNode), raw: rawText(contentNode), index: fragmentIndex++,
+          });
+        }
       });
       for (const [fragmentKey, fragment] of record.fragments) {
         if (liveFragmentKeys.has(fragmentKey)) continue;
         if (record.identity === null || fragmentKey.startsWith("within:")) record.fragments.delete(fragmentKey);
         else fragment.detached = true;
       }
+      // A virtualized pass may contain only the final message. Its local index
+      // must not move it ahead of cached messages from earlier passes.
+      record.fragmentOrder = mergeObservedOrder(record.fragmentOrder ?? [], [...liveFragmentKeys])
+        .filter((key) => record.fragments.has(key));
       nextOrder.push(group.key);
     }
     tracker.order = mergeObservedOrder(tracker.order, observedOrder.length > 0 ? observedOrder : nextOrder);
     return tracker;
   }
   function orderedFragments(record) {
+    if (record?.fragmentOrder) return record.fragmentOrder.map((key) => record.fragments.get(key)).filter(Boolean);
     return Array.from(record?.fragments?.values?.() ?? []).sort((a, b) => a.index - b.index);
   }
   function turnRecordText(record, raw = false) {
