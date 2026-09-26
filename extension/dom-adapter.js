@@ -423,10 +423,12 @@
         if (record.identity === null || fragmentKey.startsWith("within:")) record.fragments.delete(fragmentKey);
         else fragment.detached = true;
       }
-      // A virtualized pass may contain only the final message. Its local index
-      // must not move it ahead of cached messages from earlier passes.
-      record.fragmentOrder = mergeObservedOrder(record.fragmentOrder ?? [], [...liveFragmentKeys])
-        .filter((key) => record.fragments.has(key));
+      // A complete remount is authoritative and can correct order learned from
+      // disjoint partial mounts. Partial mounts must retain detached fragments.
+      record.fragmentOrder = liveFragmentKeys.size === record.fragments.size
+        ? [...liveFragmentKeys]
+        : mergeObservedOrder(record.fragmentOrder ?? [], [...liveFragmentKeys])
+          .filter((key) => record.fragments.has(key));
       nextOrder.push(group.key);
     }
     tracker.order = mergeObservedOrder(tracker.order, observedOrder.length > 0 ? observedOrder : nextOrder);
@@ -458,7 +460,14 @@
       const record = tracker.records.get(key);
       if (!record) continue;
       if (record.role === "user") break;
-      if (record.role === null) throw new Error("TURN_BOUNDARY_UNHYDRATED");
+      if (record.role === null) {
+        const modernKey = userRecord.shell?.getAttribute?.("data-turn-key");
+        // This reserved slot belongs to the confirmed user, but its assistant
+        // has not mounted yet. Wait here; never cross it into another turn.
+        if (modernKey && userRecord.key === `turn-key:${modernKey}:user`
+          && key === `turn-key:${modernKey}:assistant`) return out;
+        throw new Error("TURN_BOUNDARY_UNHYDRATED");
+      }
       if (record.role === "assistant") out.push(record);
     }
     return out;

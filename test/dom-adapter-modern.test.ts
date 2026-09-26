@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import {readFileSync} from "node:fs";
+import vm from "node:vm";
+import {webcrypto} from "node:crypto";
 
 // A small tree fixture, rather than selector-to-node answers: selectors walk
 // ancestors, queries walk descendants, and order follows the actual tree.
@@ -147,6 +150,7 @@ test("modern tracker retains unknown shells as boundaries rather than appending 
   const tracker = adapter.createTurnTracker(document, false);
   const target = adapter.findTrackedUserTurn(document, tracker, "envelope", true);
   assert.throws(() => adapter.trackedAssistantTurnsAfter(document, tracker, target), /TURN_BOUNDARY_UNHYDRATED/);
+  assert.throws(() => adapter.reconcileTracked(document, "envelope"), /TURN_BOUNDARY_UNHYDRATED/);
   unknown.append(user("next-user", "next"));
   assert.equal(adapter.trackedAssistantTurnsAfter(document, tracker, target).length, 1);
 });
@@ -156,9 +160,13 @@ test("modern pending assistant hydrates in its reserved slot", () => {
   const document = documentOf(s);
   const tracker = adapter.createTurnTracker(document, false);
   const target = adapter.findTrackedUserTurn(document, tracker, "envelope", true);
-  assert.throws(() => adapter.trackedAssistantTurnsAfter(document, tracker, target), /TURN_BOUNDARY_UNHYDRATED/);
+  assert.deepEqual(adapter.trackedAssistantTurnsAfter(document, tracker, target), []);
+  const recovered = adapter.reconcileTracked(document, "envelope");
+  assert.equal(recovered.state, "user-present");
+  assert.deepEqual(recovered.assistantRecords, []);
   s.append(assistant([["a", "done"]]), actions());
   assert.equal(adapter.trackedAssistantTurnsAfter(document, tracker, target).length, 1);
+  assert.equal(adapter.trackedAssistantTurnsAfter(document, recovered.tracker, recovered.userRecord).length, 1);
   assert.deepEqual(tracker.order, ["turn-key:pending:user", "turn-key:pending:assistant"]);
 });
 
@@ -251,4 +259,74 @@ test("modern harvest preserves three-message order when only the final fragment 
   s.replaceChildren(u, assistant([["b", "middle updated"]]), actions());
   adapter.harvestTurnTracker(document, tracker);
   assert.equal(adapter.turnRecordText(answer, true), "first\n\nmiddle updated\n\nlast updated");
+});
+
+
+test("full remount corrects fragment order learned from disjoint partial mounts", () => {
+  const u = user("u");
+  const s = shell("turn").append(u, assistant([["c", "last"]]), actions());
+  const document = documentOf(s);
+  const tracker = adapter.createTurnTracker(document, false);
+  const answer = tracker.records.get("turn-key:turn:assistant");
+  s.replaceChildren(u, assistant([["a", "first"], ["b", "middle"]]), actions());
+  adapter.harvestTurnTracker(document, tracker);
+  s.replaceChildren(u, assistant([["a", "first"], ["b", "middle"], ["c", "last"]]), actions());
+  adapter.harvestTurnTracker(document, tracker);
+  assert.equal(adapter.trackedAssistantComplete(document, answer), true);
+  assert.equal(adapter.turnRecordText(answer, true), "first\n\nmiddle\n\nlast");
+  s.replaceChildren(u, assistant([["b", "updated"]]), actions());
+  adapter.harvestTurnTracker(document, tracker);
+  assert.equal(adapter.turnRecordText(answer, true), "first\n\nupdated\n\nlast");
+});
+
+test("modern user-only reconcile starts monitoring and captures the later assistant", async () => {
+  const s = shell("pending").append(user("u"));
+  const document = Object.assign(documentOf(s), {documentElement: s});
+  const events: any[] = [];
+  const intervals = new Set<ReturnType<typeof setInterval>>();
+  let listener: any;
+  let mutated = () => {};
+  let observing = false;
+  const context = vm.createContext({
+    ReviewRelayDomAdapter: adapter, document, crypto: webcrypto, TextEncoder,
+    location: {origin: "https://chatgpt.com", pathname: "/c/test"},
+    chrome: {runtime: {
+      onMessage: {addListener(value: any) { listener = value; }},
+      async sendMessage(message: any) { events.push(message); return {ok: true}; },
+    }},
+    MutationObserver: class {
+      constructor(callback: () => void) { mutated = callback; }
+      observe() { observing = true; }
+      disconnect() { observing = false; }
+    },
+    setTimeout, clearTimeout,
+    setInterval(callback: () => void, delay: number) {
+      const timer = setInterval(callback, delay); intervals.add(timer); return timer;
+    },
+    clearInterval,
+  });
+  const waitFor = async (predicate: () => boolean, timeout = 1500) => {
+    const deadline = Date.now() + timeout;
+    while (!predicate()) {
+      assert.ok(Date.now() < deadline, "expected lifecycle progress before deadline");
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  };
+  try {
+    vm.runInContext(readFileSync(new URL("../extension/content.js", import.meta.url), "utf8"), context);
+    let response: any;
+    listener({kind: "RECONCILE_TRIGGER", jobId: "modern-recovery", envelope: "envelope",
+      reviewMode: "relay-only", deadline: new Date(Date.now() + 10_000).toISOString()}, {}, (value: any) => { response = value; });
+    assert.equal(response.ok, true);
+    await waitFor(() => observing || events.some((event) => event.type === "SEND_UNCERTAIN"));
+    assert.equal(observing, true);
+    assert.deepEqual(events.filter((event) => event.kind === "LIFECYCLE").map((event) => event.type), ["USER_TURN_ACKED"]);
+    s.append(assistant([["a", "recovered verdict"]]), actions());
+    mutated();
+    await waitFor(() => events.some((event) => event.type === "TURN_IDLE"), 4500);
+    assert.deepEqual(events.filter((event) => event.kind === "LIFECYCLE").map((event) => event.type), ["USER_TURN_ACKED", "ASSISTANT_STARTED", "TURN_IDLE"]);
+    assert.equal(events.find((event) => event.type === "TURN_IDLE").assistantOutput, "recovered verdict");
+  } finally {
+    for (const timer of intervals) clearInterval(timer);
+  }
 });
