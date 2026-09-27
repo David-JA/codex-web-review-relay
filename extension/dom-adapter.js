@@ -455,19 +455,21 @@
     harvestTurnTracker(document, tracker);
     const index = tracker.order.indexOf(userRecord?.key);
     if (index < 0) throw new Error("TURN_ANCHOR_AMBIGUOUS");
+    // Modern shells contain both roles of one logical turn. Resolve the
+    // confirmed stable key, not a live shell attribute that React may reuse.
+    // Never scan later shells or discard their virtualized boundary records.
+    if (typeof userRecord.key === "string" && userRecord.key.startsWith("turn-key:") && userRecord.key.endsWith(":user")) {
+      const assistant = tracker.records.get(`${userRecord.key.slice(0, -5)}:assistant`);
+      if (!assistant || assistant.role === null) return [];
+      if (assistant.role !== "assistant") throw new Error("TURN_ROLE_AMBIGUOUS");
+      return [assistant];
+    }
     const out = [];
     for (const key of tracker.order.slice(index + 1)) {
       const record = tracker.records.get(key);
       if (!record) continue;
       if (record.role === "user") break;
-      if (record.role === null) {
-        const modernKey = userRecord.shell?.getAttribute?.("data-turn-key");
-        // This reserved slot belongs to the confirmed user, but its assistant
-        // has not mounted yet. Wait here; never cross it into another turn.
-        if (modernKey && userRecord.key === `turn-key:${modernKey}:user`
-          && key === `turn-key:${modernKey}:assistant`) return out;
-        throw new Error("TURN_BOUNDARY_UNHYDRATED");
-      }
+      if (record.role === null) throw new Error("TURN_BOUNDARY_UNHYDRATED");
       if (record.role === "assistant") out.push(record);
     }
     return out;

@@ -143,14 +143,14 @@ test("modern shell positions remain ordered through hydration and stop at the ne
   assert.deepEqual(adapter.trackedAssistantTurnsAfter(document, tracker, target).map((record: any) => adapter.turnRecordText(record, true)), ["Verdict: PASS"]);
 });
 
-test("modern tracker retains unknown shells as boundaries rather than appending all role nodes", () => {
+test("modern tracker reads only the confirmed shell without crossing unknown later shells", () => {
   const first = conversation("one"), history = conversation("history", "old", "historical");
   const unknown = shell("unknown");
   const document = documentOf(first.s, unknown, history.s);
   const tracker = adapter.createTurnTracker(document, false);
   const target = adapter.findTrackedUserTurn(document, tracker, "envelope", true);
-  assert.throws(() => adapter.trackedAssistantTurnsAfter(document, tracker, target), /TURN_BOUNDARY_UNHYDRATED/);
-  assert.throws(() => adapter.reconcileTracked(document, "envelope"), /TURN_BOUNDARY_UNHYDRATED/);
+  assert.deepEqual(adapter.trackedAssistantTurnsAfter(document, tracker, target).map((record: any) => adapter.turnRecordText(record, true)), ["Verdict: PASS"]);
+  assert.equal(adapter.reconcileTracked(document, "envelope").assistantRecords.length, 1);
   unknown.append(user("next-user", "next"));
   assert.equal(adapter.trackedAssistantTurnsAfter(document, tracker, target).length, 1);
 });
@@ -281,7 +281,8 @@ test("full remount corrects fragment order learned from disjoint partial mounts"
 
 test("modern user-only reconcile starts monitoring and captures the later assistant", async () => {
   const s = shell("pending").append(user("u"));
-  const document = Object.assign(documentOf(s), {documentElement: s});
+  const transient = shell("temporary");
+  const document = Object.assign(documentOf(s, transient), {documentElement: s});
   const events: any[] = [];
   const intervals = new Set<ReturnType<typeof setInterval>>();
   let listener: any;
@@ -321,6 +322,7 @@ test("modern user-only reconcile starts monitoring and captures the later assist
     await waitFor(() => observing || events.some((event) => event.type === "SEND_UNCERTAIN"));
     assert.equal(observing, true);
     assert.deepEqual(events.filter((event) => event.kind === "LIFECYCLE").map((event) => event.type), ["USER_TURN_ACKED"]);
+    transient.remove();
     s.append(assistant([["a", "recovered verdict"]]), actions());
     mutated();
     await waitFor(() => events.some((event) => event.type === "TURN_IDLE"), 4500);
@@ -329,4 +331,43 @@ test("modern user-only reconcile starts monitoring and captures the later assist
   } finally {
     for (const timer of intervals) clearInterval(timer);
   }
+});
+
+
+test("modern response survives a removed empty shell while preserving the cached boundary", () => {
+  const first = conversation("one");
+  const transient = shell("temporary");
+  const document = documentOf(first.s, transient);
+  const tracker = adapter.createTurnTracker(document, false);
+  const target = adapter.findTrackedUserTurn(document, tracker, "envelope", true);
+  transient.remove();
+  const [answer] = adapter.trackedAssistantTurnsAfter(document, tracker, target);
+  assert.equal(adapter.turnRecordText(answer, true), "Verdict: PASS");
+  assert.equal(adapter.trackedAssistantComplete(document, answer), true);
+  assert.ok(tracker.records.has("turn-key:temporary:user"));
+  assert.ok(tracker.records.has("turn-key:temporary:assistant"));
+});
+
+test("modern pending response never adopts an assistant from another shell", () => {
+  const pending = shell("pending").append(user("u"));
+  const foreign = shell("foreign").append(assistant([["other", "must not capture"]]), actions());
+  const document = documentOf(pending, foreign);
+  const recovered = adapter.reconcileTracked(document, "envelope");
+  assert.deepEqual(recovered.assistantRecords, []);
+  pending.append(assistant([["owned", "target answer"]]), actions());
+  const answers = adapter.trackedAssistantTurnsAfter(document, recovered.tracker, recovered.userRecord);
+  assert.deepEqual(answers.map((answer: any) => adapter.turnRecordText(answer, true)), ["target answer"]);
+});
+
+
+test("modern response ownership survives reuse of the shell DOM element", () => {
+  const first = conversation("one");
+  const document = documentOf(first.s);
+  const tracker = adapter.createTurnTracker(document, false);
+  const target = adapter.findTrackedUserTurn(document, tracker, "envelope", true);
+  first.s.attrs["data-turn-key"] = "different";
+  first.s.replaceChildren(user("foreign-user", "unrelated"), assistant([["foreign-answer", "must not capture"]]), actions());
+  const answers = adapter.trackedAssistantTurnsAfter(document, tracker, target);
+  assert.deepEqual(answers.map((answer: any) => adapter.turnRecordText(answer, true)), ["Verdict: PASS"]);
+  assert.equal(adapter.trackedAssistantComplete(document, answers[0]), false);
 });
