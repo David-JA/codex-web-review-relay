@@ -340,6 +340,14 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
       .then(() => respond({ok: true}), (error) => respond({ok: false, errorCode: error.message}));
     return true;
   }
+  if (message.kind === "POPUP_CHECK_PAGE") {
+    (async () => {
+      const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+      if (!tab?.id || !tab.url?.startsWith("https://chatgpt.com/")) throw new Error("ACTIVE_TAB_NOT_CHATGPT");
+      return await chrome.tabs.sendMessage(tab.id, {kind: "GET_PAGE_DIAGNOSTICS"});
+    })().then(respond, (error) => respond({ok: false, error: error.message}));
+    return true;
+  }
   if (message.kind === "POPUP_ARM") { arm().then((state) => respond({ok: true, state}), (error) => respond({ok: false, error: error.message})); return true; }
   if (message.kind === "POPUP_DISARM") { disarm().then((state) => respond({ok: true, state}), (error) => respond({ok: false, error: error.message})); return true; }
   if (message.kind === "POPUP_STATUS") respond({ok: true, state: popupState()});

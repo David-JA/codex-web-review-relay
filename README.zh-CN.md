@@ -169,6 +169,8 @@ Exporter 由 relay 所有；仓库特定的 stage-gate 治理仍由 producer age
 
 扩展 ID 固定为：`kkdijpckhlminpolkllmmkldlljakfem`。
 
+Arm 前可点击扩展弹窗的 **Check page**，只读检查当前对话 DOM：输入框是否可用、已观察到的用户/助手消息轮数、尚未加载内容的容器、助手正文长度、生成状态和最后一条助手回复的完成标记。它不发送消息、不 Arm、不连接 native host，也不返回对话正文。计数只覆盖当前挂载的 DOM，可能不包含被虚拟化的历史消息；检查通过不等于端到端传输通过。更新已解压的扩展后，先在扩展管理器重新加载，再刷新 ChatGPT 页面并检查。
+
 ### 5. Arm 一个对话
 
 1. 打开（或新建）你想用作评审者的 ChatGPT 对话。
@@ -179,7 +181,7 @@ Exporter 由 relay 所有；仓库特定的 stage-gate 治理仍由 producer age
 
 扩展同时只允许一个手动 Arm 的 ChatGPT 标签页和一个 active review job。第二次点击 **Arm** 返回 `SESSION_ALREADY_ARMED`；job active 时点击 **Arm** / **Disarm** 分别返回 `ACTIVE_JOB_ARM_FORBIDDEN` / `ACTIVE_JOB_DISARM_FORBIDDEN`。如果 armed 标签页关闭、导航、切换 conversation 或丢失 page binding，当前 job 报告 `SESSION_LOST`，extension 随即 Disarm；你必须在目标对话中手动重新 Arm。
 
-评审期间，扩展会按 ChatGPT turn identity 增量提取目标 user turn 之后、下一个 user turn 之前的全部有序 assistant turns，而不是把当前页面上“最新的 assistant bubble”直接当作结果。只有目标 turn 集合完整且 native host 确认收到后，才会发送 `TURN_IDLE`。
+评审期间，扩展按稳定的 ChatGPT turn identity 跟踪回复，并按文档顺序拼接助手消息分片。新版 DOM 的用户与助手共用一个 turn 容器：通过已确认的 user key 只选择配对的 assistant，虚拟化或容器复用后仍保持这一绑定。旧版 DOM 则提取目标 user turn 之后、下一个 user turn 之前的 assistant turns。只有目标回复完整且 native host 确认收到后，才会发送 `TURN_IDLE`。
 
 ### 6. 连接你的 MCP 客户端
 

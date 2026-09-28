@@ -171,6 +171,8 @@ Existing installations do not migrate themselves. Re-running the v0.3.0 installe
 
 The extension ID is fixed: `kkdijpckhlminpolkllmmkldlljakfem`.
 
+Before arming, **Check page** in the extension popup runs a read-only check of the current conversation DOM. It reports composer availability, observed user/assistant turn counts, unresolved shells, assistant text lengths, generation state and the last assistant turn's completion evidence. It does not send a message, arm a session, connect to the native host, or return conversation text. Counts cover the currently mounted DOM, so virtualized history may be absent. A successful check is not an end-to-end transport test. After updating an unpacked extension, reload it in the extension manager and refresh ChatGPT before checking again.
+
 ### 5. Arm a conversation
 
 1. Open (or create) a ChatGPT conversation you want to use as the reviewer.
@@ -181,7 +183,7 @@ The popup reports semantic state (`armed`, `connection`, `sessionState`, and the
 
 The extension permits one manually armed ChatGPT tab and one active review job. A second **Arm** returns `SESSION_ALREADY_ARMED`; while a job is active, **Arm** and **Disarm** return `ACTIVE_JOB_ARM_FORBIDDEN` and `ACTIVE_JOB_DISARM_FORBIDDEN`. If the armed tab closes, navigates, changes conversation, or loses its page binding, the current job reports `SESSION_LOST`, the extension disarms, and you must manually Arm the intended conversation again.
 
-During a review, the extension tracks the assistant response by the ChatGPT turn identity and incrementally harvests every ordered assistant turn after the target user turn and before the next user turn. It does not treat whichever assistant bubble is currently newest as the result. A `TURN_IDLE` result is sent only after the target turn set is complete and the native host acknowledges receipt.
+During a review, the extension tracks the response by stable ChatGPT turn identity and assembles its assistant message fragments in document order. In the redesigned DOM, the user and assistant share one turn shell: the confirmed user key selects only its paired assistant, including after virtualization or shell reuse. In the legacy DOM, tracking spans assistant turns after the target user and before the next user. A `TURN_IDLE` result is sent only after the target response is complete and the native host acknowledges receipt.
 
 ### 6. Connect your MCP client
 

@@ -256,6 +256,22 @@
   chrome.runtime.onMessage.addListener((message, _sender, respond) => {
     try {
       if (message.kind === "GET_PAGE_STATE") { adapter.pageSupported(location); respond({ok: true, adapterReady: true, conversationIdentity: `${location.origin}${location.pathname}`, documentId: DOCUMENT_ID}); }
+      else if (message.kind === "GET_PAGE_DIAGNOSTICS") {
+        adapter.pageSupported(location);
+        adapter.composer(document);
+        const tracker = adapter.createTurnTracker(document, false);
+        const records = tracker.order.map((key) => tracker.records.get(key));
+        const assistants = records.filter((record) => record.role === "assistant");
+        respond({ok: true, page: {
+          composerReady: true,
+          generating: adapter.isGenerating(document),
+          userTurns: records.filter((record) => record.role === "user").length,
+          assistantTurns: assistants.length,
+          unresolvedTurns: records.filter((record) => record.role === null).length,
+          assistantCharacters: assistants.map((record) => adapter.turnRecordText(record, true).length),
+          lastAssistantComplete: assistants.length > 0 && adapter.trackedAssistantComplete(document, assistants.at(-1)),
+        }});
+      }
       else if (message.kind === "DISPATCH_TRIGGER") { acceptTrigger(message, runDispatch); respond({ok: true}); }
       else if (message.kind === "RECONCILE_TRIGGER") { acceptTrigger(message, runReconcile); respond({ok: true}); }
       else respond({ok: false, errorCode: "CONTENT_MESSAGE_UNSUPPORTED"});
