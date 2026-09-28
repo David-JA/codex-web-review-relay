@@ -52,9 +52,9 @@
 
 安装面向本机用户，而不是某个仓库。每次请求提供一个绝对 `handoff_file`，relay 为该请求解析 Git root 和一个已配置 remote 的 canonical slug。它优先使用 `origin`，再按 `github`、`upstream`、`agent`、`gitee` 等常见 remote 名称尝试，因此不要求 checkout 重命名现有 remote。当前版本仍是 single-active-job：不同仓库可以顺序复用，但不支持队列或并发 reviewer conversation。
 
-## v0.3.0 Release
+## v0.3.1 Release
 
-`v0.3.0` 是首个正式公开 Release。请从 GitHub Release 下载 `codex-web-review-relay-extension-v0.3.0.zip`、`codex-web-review-relay-native-host-windows-v0.3.0.zip` 和 `SHA256SUMS.txt`。GitHub 自动生成的 source archives 不是安装资产。
+`v0.3.1` 是兼容性补丁版本，适配新版 ChatGPT 页面，新增只读页面诊断，并包含已合并的 handoff/状态修复。详见 [Release notes](release-notes-v0.3.1.md) 和 [升级说明](MIGRATION.md)。请从 GitHub Release 下载 `codex-web-review-relay-extension-v0.3.1.zip`、`codex-web-review-relay-native-host-windows-v0.3.1.zip` 和 `SHA256SUMS.txt`。GitHub 自动生成的 source archives 不是安装资产。
 
 Reviewer 可见的 envelope 按 mode 分为两套逐字冻结合同。PR mode 使用：
 
@@ -80,7 +80,7 @@ Commit-only mode 在 `Path:` 后立即插入 `Target kind: commit` 与 `Target I
 - **Git CLI**（解析 repository identity 并验证 tracked handoff）
 - **PowerShell 7 / `pwsh`**
 - **系统可用的 .NET Framework `csc.exe`**（编译 launcher）
-- **Windows**（v0.3.0 installer 仅支持 Windows）
+- **Windows**（v0.3.1 installer 仅支持 Windows）
 
 `requirements-dev.txt` 和 schema test dependencies 属于开发前置条件，不是终端用户安装前置条件。
 
@@ -113,11 +113,11 @@ Transport diagnostics 由 native host 写入安装时配置的固定 `diagnostic
 
 ### 1. 下载 Release 资产
 
-从 `v0.3.0` GitHub Release 下载两个 ZIP 和 `SHA256SUMS.txt`，先校验 checksum 再解压。不要把 GitHub source archive 当作安装包。
+从 `v0.3.1` GitHub Release 下载两个 ZIP 和 `SHA256SUMS.txt`，先校验 checksum 再解压。不要把 GitHub source archive 当作安装包。
 
 ### 2. 从 Windows 资产安装 native host
 
-解压 `codex-web-review-relay-native-host-windows-v0.3.0.zip`，在解压目录中运行：
+解压 `codex-web-review-relay-native-host-windows-v0.3.1.zip`，在解压目录中运行：
 
 ```powershell
 pwsh -NoProfile -File scripts/install-native-host.ps1 -InstallRoot "$env:LOCALAPPDATA\codex-web-review-relay"
@@ -159,13 +159,13 @@ Exporter 由 relay 所有；仓库特定的 stage-gate 治理仍由 producer age
 .\scripts\install-native-host.ps1 -InstallRoot <relay-install-root>
 ```
 
-现有安装不会自行迁移。重新运行 v0.3.0 installer 会重建安装配置、安装 relay-owned exporter 并旋转 Bearer token。完整步骤见 native-host 资产中的 `MIGRATION.md`。
+现有安装不会自行迁移。重新运行 v0.3.1 installer 会重建安装配置、安装 relay-owned exporter 并旋转 Bearer token。完整步骤见 native-host 资产中的 `MIGRATION.md`。
 
 ### 4. 加载扩展
 
 1. 打开 `chrome://extensions`
 2. 启用**开发者模式**
-3. 解压 `codex-web-review-relay-extension-v0.3.0.zip`，点击**加载已解压的扩展程序**选择解压目录；该目录根部必须直接包含 `manifest.json`
+3. 解压 `codex-web-review-relay-extension-v0.3.1.zip`，点击**加载已解压的扩展程序**选择解压目录；该目录根部必须直接包含 `manifest.json`
 
 扩展 ID 固定为：`kkdijpckhlminpolkllmmkldlljakfem`。
 

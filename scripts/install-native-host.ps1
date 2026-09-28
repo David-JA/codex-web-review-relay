@@ -63,7 +63,7 @@ New-Item -ItemType Directory -Path (Join-Path $runtimeRoot 'contracts') -Force |
 Copy-Item -LiteralPath $runtimeContractsPath -Destination (Join-Path $runtimeRoot 'contracts\mcp-tools.schema.json') -Force
 $runtimePackage = [ordered]@{
     name = 'codex-web-review-relay-native-host'
-    version = '0.3.0'
+    version = '0.3.1'
     private = $true
     type = 'module'
     engines = [ordered]@{ node = '>=24' }

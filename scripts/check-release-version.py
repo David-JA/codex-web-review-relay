@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PRODUCT_VERSION = "0.3.0"
+PRODUCT_VERSION = "0.3.1"
 package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
 manifest = json.loads((ROOT / "extension" / "manifest.json").read_text(encoding="utf-8"))
 server = (ROOT / "src" / "server.ts").read_text(encoding="utf-8")

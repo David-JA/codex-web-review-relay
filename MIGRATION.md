@@ -1,8 +1,18 @@
-# v0.3.0 migration from repository-bound installations
+# Upgrade to v0.3.1
+
+## Existing v0.3.0 user-scoped installations
+
+The MCP request shape, protocol version and formal-verdict modes are unchanged. Consumer repositories do not need to rewrite handoffs or install a repository-owned helper.
+
+For the ChatGPT DOM fix and Check page alone, update the extension: verify the v0.3.1 extension ZIP against SHA256SUMS.txt, extract it to the directory actually loaded by the browser (or select the new directory), reload the extension, and refresh the target ChatGPT conversation. If the binding is lost, manually Arm the intended conversation again. Updating extension files alone does not rotate the native-host token. Check page is read-only and optional; success is not end-to-end transport acceptance.
+
+To receive all v0.3.1 native-host fixes, including `.agents/` handoff paths and configured remote fallbacks, also install the v0.3.1 native-host asset into the existing InstallRoot after finishing any active review. Reinstallation rebuilds configuration and rotates the Bearer token: preserve any intentional configuration overrides, update saved MCP Authorization headers and restart affected clients. Do not run a native smoke against an active host or armed session.
+
+## Older repository-bound installations
 
 Older installations may contain `repositoryRoot`, `helperPath`, a producer-owned helper, or a launcher bound to a previous clone path. They are not migrated in place automatically.
 
-1. Download and extract the v0.3.0 native-host Windows asset.
+1. Download and extract the v0.3.1 native-host Windows asset.
 2. Run the installer again with the existing `<InstallRoot>`.
 3. Confirm that `<InstallRoot>\runtime\src\cli.ts`, `<InstallRoot>\runtime\contracts`, and `<InstallRoot>\relay_export_helper.py` exist.
 4. Confirm that the new `relay.config.json` contains no `repositoryRoot` or `helperPath` and that the native-host manifest points to `<InstallRoot>\codex-web-review-relay.exe`.

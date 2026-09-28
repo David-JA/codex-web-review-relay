@@ -54,9 +54,9 @@ This relay automates steps 2-3 while keeping **you in control**: you manually op
 
 The installation is user-scoped rather than repository-scoped. Each request supplies one absolute `handoff_file`; the relay resolves the Git root and a canonical configured remote slug for that request. It prefers `origin`, then common named remotes such as `github`, `upstream`, `agent`, and `gitee`, so a checkout does not need to rename its existing remotes. The current release remains single-active-job: different repositories can be reviewed sequentially, while queues and concurrent reviewer conversations are out of scope.
 
-## v0.3.0 Release
+## v0.3.1 Release
 
-`v0.3.0` is the first formal public release. Install from the GitHub Release assets: `codex-web-review-relay-extension-v0.3.0.zip`, `codex-web-review-relay-native-host-windows-v0.3.0.zip`, and `SHA256SUMS.txt`. GitHub-generated source archives are not installation assets.
+`v0.3.1` is a compatibility patch release for the redesigned ChatGPT page, with read-only page diagnostics and accumulated handoff/status fixes. See [release notes](release-notes-v0.3.1.md) and [upgrade instructions](MIGRATION.md). Install from the GitHub Release assets: `codex-web-review-relay-extension-v0.3.1.zip`, `codex-web-review-relay-native-host-windows-v0.3.1.zip`, and `SHA256SUMS.txt`. GitHub-generated source archives are not installation assets.
 
 The reviewer-visible envelope is frozen byte-for-byte in two mode-specific contracts. PR mode uses:
 
@@ -82,7 +82,7 @@ Commit-only mode inserts `Target kind: commit` and `Target ID: ...` immediately 
 - **Git CLI** (used to resolve repository identity and verify the tracked handoff)
 - **PowerShell 7 / `pwsh`**
 - **.NET Framework `csc.exe`** available on the system (used to compile the launcher)
-- **Windows** (the v0.3.0 installer is Windows-only)
+- **Windows** (the v0.3.1 installer is Windows-only)
 
 `requirements-dev.txt` and schema-test dependencies are development prerequisites, not end-user installation prerequisites.
 
@@ -115,11 +115,11 @@ For PR mode, the PR comment is the formal verdict record and requires the review
 
 ### 1. Download the release assets
 
-Download the two ZIP assets and `SHA256SUMS.txt` from the `v0.3.0` GitHub Release and verify the checksums before extracting them. Do not use a GitHub source archive as the installation package.
+Download the two ZIP assets and `SHA256SUMS.txt` from the `v0.3.1` GitHub Release and verify the checksums before extracting them. Do not use a GitHub source archive as the installation package.
 
 ### 2. Install the native host from the Windows asset
 
-Extract `codex-web-review-relay-native-host-windows-v0.3.0.zip`, then run from that extracted directory:
+Extract `codex-web-review-relay-native-host-windows-v0.3.1.zip`, then run from that extracted directory:
 
 ```powershell
 pwsh -NoProfile -File scripts/install-native-host.ps1 -InstallRoot "$env:LOCALAPPDATA\codex-web-review-relay"
@@ -161,13 +161,13 @@ Repository-owned helpers are no longer part of the native-host installation cont
 .\scripts\install-native-host.ps1 -InstallRoot <relay-install-root>
 ```
 
-Existing installations do not migrate themselves. Re-running the v0.3.0 installer rebuilds the installation configuration, installs the relay-owned exporter and rotates the Bearer token. See `MIGRATION.md` in the native-host asset for the full procedure.
+Existing installations do not migrate themselves. Re-running the v0.3.1 installer rebuilds the installation configuration, installs the relay-owned exporter and rotates the Bearer token. See `MIGRATION.md` in the native-host asset for the full procedure.
 
 ### 4. Load the extension
 
 1. Open `chrome://extensions`
 2. Enable **Developer mode**
-3. Extract `codex-web-review-relay-extension-v0.3.0.zip` and click **Load unpacked** on the extracted directory. Its root must directly contain `manifest.json`.
+3. Extract `codex-web-review-relay-extension-v0.3.1.zip` and click **Load unpacked** on the extracted directory. Its root must directly contain `manifest.json`.
 
 The extension ID is fixed: `kkdijpckhlminpolkllmmkldlljakfem`.
 

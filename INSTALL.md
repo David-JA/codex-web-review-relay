@@ -1,6 +1,6 @@
-# v0.3.0 Windows installation
+# v0.3.1 Windows installation
 
-This is the end-user installation guide bundled in the `codex-web-review-relay-native-host-windows-v0.3.0.zip` asset. Download that asset and the extension ZIP from the GitHub Release; cloning the development repository is not required.
+This is the end-user installation guide bundled in the `codex-web-review-relay-native-host-windows-v0.3.1.zip` asset. Download that asset and the extension ZIP from the GitHub Release; cloning the development repository is not required.
 
 ## Prerequisites
 

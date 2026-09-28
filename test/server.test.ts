@@ -83,7 +83,7 @@ test("localhost MCP server enforces auth, origin and protocol version", async ()
   assert.equal(initialized.status, 200);
   const initializeBody = await initialized.json();
   assert.equal(initializeBody.result.protocolVersion, MCP_PROTOCOL_VERSION);
-  assert.equal(initializeBody.result.serverInfo.version, "0.3.0");
+  assert.equal(initializeBody.result.serverInfo.version, "0.3.1");
   assert.match(initializeBody.result.instructions, /absolute handoff_file/);
 
   const missingVersion = await fetch(`${base}/mcp`, {
