@@ -181,7 +181,7 @@ Arm 前可点击扩展弹窗的 **Check page**，只读检查当前对话 DOM：
 
 扩展同时只允许一个手动 Arm 的 ChatGPT 标签页和一个 active review job。第二次点击 **Arm** 返回 `SESSION_ALREADY_ARMED`；job active 时点击 **Arm** / **Disarm** 分别返回 `ACTIVE_JOB_ARM_FORBIDDEN` / `ACTIVE_JOB_DISARM_FORBIDDEN`。如果 armed 标签页关闭、导航、切换 conversation 或丢失 page binding，当前 job 报告 `SESSION_LOST`，extension 随即 Disarm；你必须在目标对话中手动重新 Arm。
 
-评审期间，扩展会按 ChatGPT turn identity 增量提取目标 user turn 之后、下一个 user turn 之前的全部有序 assistant turns，而不是把当前页面上“最新的 assistant bubble”直接当作结果。只有目标 turn 集合完整且 native host 确认收到后，才会发送 `TURN_IDLE`。
+评审期间，扩展按稳定的 ChatGPT turn identity 跟踪回复，并按文档顺序拼接助手消息分片。新版 DOM 的用户与助手共用一个 turn 容器：通过已确认的 user key 只选择配对的 assistant，虚拟化或容器复用后仍保持这一绑定。旧版 DOM 则提取目标 user turn 之后、下一个 user turn 之前的 assistant turns。只有目标回复完整且 native host 确认收到后，才会发送 `TURN_IDLE`。
 
 ### 6. 连接你的 MCP 客户端
 
