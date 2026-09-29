@@ -177,6 +177,8 @@ test("operator-authorized recovery retries one terminal mismatch exactly once", 
       throw new Error("write failed");
     }
     reconcileWrites += 1;
+    assert.equal(message.allowMissingSend, true);
+    assert.equal(message.allowUnsentSend, true);
     setImmediate(() => {
       acceptOutbound(bridge, message);
       lifecycle(bridge, "USER_TURN_ACKED", message.jobId as string);
@@ -187,6 +189,7 @@ test("operator-authorized recovery retries one terminal mismatch exactly once", 
   try {
     await assert.rejects(service.requestReview(relay.handoff_path), /write failed/);
     const mismatchService = new ReviewTransportService(config(root), store, coordinator, bridge, (message) => {
+      assert.equal(message.allowMissingSend, false);
       acceptOutbound(bridge, message);
       lifecycle(bridge, "RECONCILE_MISMATCH", message.jobId as string);
     }, async () => relay);
@@ -537,6 +540,7 @@ test("restart reconciles instead of issuing a second dispatch and permits at mos
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(recoveryWrites[0].type, "RECONCILE_TRIGGER");
     assert.equal(recoveryWrites[0].allowUnsentSend, true);
+    assert.equal(recoveryWrites[0].allowMissingSend, false);
     assert.equal(firstWrites.length, 1);
 
     const secondRecoveryWrites: Record<string, unknown>[] = [];
@@ -545,6 +549,7 @@ test("restart reconciles instead of issuing a second dispatch and permits at mos
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(secondRecoveryWrites[0].type, "RECONCILE_TRIGGER");
     assert.equal(secondRecoveryWrites[0].allowUnsentSend, false);
+    assert.equal(secondRecoveryWrites[0].allowMissingSend, false);
 
     lifecycle(bridge, "USER_TURN_ACKED", jobId);
     lifecycle(bridge, "ASSISTANT_STARTED", jobId);

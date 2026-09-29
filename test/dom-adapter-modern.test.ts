@@ -86,6 +86,108 @@ function conversation(id: string, prompt = "envelope", output = "Verdict: PASS",
 await import("../extension/dom-adapter.js");
 const adapter = (globalThis as unknown as {ReviewRelayDomAdapter: Record<string, (...args: any[]) => any>}).ReviewRelayDomAdapter;
 
+test("initial parser failures retain structural evidence before any composer write", async () => {
+  const bad = user("first second", "historical prompt");
+  const document = documentOf(shell("old").append(bad));
+  let caught: any;
+  try { await adapter.dispatchTracked(document, "request", {deadline: Date.now() + 80}); }
+  catch (error) { caught = error; }
+  assert.match(caught?.message, /MESSAGE_IDENTITY_AMBIGUOUS/);
+  assert.equal(caught.dispatchStage, "before-write");
+  assert.ok(caught.turnTracker);
+  assert.ok(adapter.trackedTurnObservation(document, caught.turnTracker, "request").candidates.length > 0);
+  assert.throws(() => adapter.reconcileTracked(document, "request"), (error: any) => {
+    assert.ok(error.turnTracker);
+    return /MESSAGE_IDENTITY_AMBIGUOUS/.test(error.message);
+  });
+});
+
+test("dispatch waits for transient historical ambiguity and sends only once", async () => {
+  const bad = user("first second", "historical prompt");
+  const input = Object.assign(el("textarea", {id: "prompt-textarea"}), {value: ""});
+  const send = el("button", {"data-testid": "send-button"});
+  const document = documentOf(shell("old").append(bad), input, send);
+  let clicks = 0;
+  Object.assign(send, {click() {
+    clicks++;
+    document.append(shell("new").append(user("new-user", input.value)));
+    input.value = "";
+  }});
+  const timer = setTimeout(() => { bad.attrs["data-chatgpt-search-message-ids"] = "first"; }, 50);
+  try {
+    const state = await adapter.dispatchTracked(document, "request");
+    assert.equal(clicks, 1);
+    assert.equal(state.userRecord.key, "turn-key:new:user");
+  } finally { clearTimeout(timer); }
+});
+
+test("missing-message recovery preserves drafts and never duplicates a present request", async () => {
+  const input = Object.assign(el("textarea", {id: "prompt-textarea"}), {value: "my draft"});
+  const document = documentOf(input);
+  await assert.rejects(adapter.dispatchTracked(document, "request", {requireEmpty: true}), /RECOVERY_COMPOSER_NOT_EMPTY/);
+  assert.equal(input.value, "my draft");
+  document.append(conversation("existing", "request").s);
+  const state = await adapter.dispatchTracked(document, "request", {requireEmpty: true});
+  assert.equal(state.userRecord.key, "turn-key:existing:user");
+  assert.equal(input.value, "my draft");
+});
+
+test("expired preparation never writes or clicks", async () => {
+  const input = Object.assign(el("textarea", {id: "prompt-textarea"}), {value: ""});
+  await assert.rejects(adapter.dispatchTracked(documentOf(input), "request", {deadline: Date.now() - 1}), /MESSAGE_DEADLINE_EXPIRED/);
+  assert.equal(input.value, "");
+});
+
+test("click exceptions are marked uncertain and never retried as preparation", async () => {
+  const input = Object.assign(el("textarea", {id: "prompt-textarea"}), {value: ""});
+  const send = el("button", {"data-testid": "send-button"});
+  let clicks = 0;
+  Object.assign(send, {click() { clicks++; throw new Error("CLICK_FAILED"); }});
+  await assert.rejects(adapter.dispatchTracked(documentOf(input, send), "request"), (error: any) => {
+    assert.equal(error.dispatchStage, "after-click");
+    assert.ok(error.turnTracker);
+    return /CLICK_FAILED/.test(error.message);
+  });
+  assert.equal(clicks, 1);
+});
+
+test("manual empty-composer recovery sends once but refuses a generating page", async () => {
+  const input = Object.assign(el("textarea", {id: "prompt-textarea"}), {value: ""});
+  const send = el("button", {"data-testid": "send-button"});
+  const stop = el("button", {"data-testid": "stop-button"});
+  const document = documentOf(input, send, stop);
+  let clicks = 0;
+  Object.assign(send, {click() {
+    clicks++;
+    document.append(conversation("sent", input.value).s);
+    input.value = "";
+  }});
+  await assert.rejects(adapter.dispatchTracked(document, "request", {requireEmpty: true}), /RECOVERY_PAGE_GENERATING/);
+  assert.equal(clicks, 0);
+  assert.equal(input.value, "");
+  stop.remove();
+  await adapter.dispatchTracked(document, "request", {requireEmpty: true});
+  await adapter.dispatchTracked(document, "request", {requireEmpty: true});
+  assert.equal(clicks, 1);
+});
+
+test("a draft changed while waiting for send is preserved and never clicked", async () => {
+  const input = Object.assign(el("textarea", {id: "prompt-textarea"}), {value: ""});
+  const send = el("button", {"data-testid": "send-button"});
+  send.disabled = true;
+  let clicks = 0;
+  Object.assign(send, {click() { clicks++; }});
+  const timer = setTimeout(() => { input.value = "edited draft"; send.disabled = false; }, 50);
+  try {
+    await assert.rejects(adapter.dispatchTracked(documentOf(input, send), "request"), (error: any) => {
+      assert.equal(error.dispatchStage, "before-click");
+      return /COMPOSER_READBACK_MISMATCH/.test(error.message);
+    });
+    assert.equal(clicks, 0);
+    assert.equal(input.value, "edited draft");
+  } finally { clearTimeout(timer); }
+});
+
 test("modern shared shells create ordered role records and extract only message content", () => {
   const {s, u, a} = conversation("turn-a");
   const document = documentOf(s);

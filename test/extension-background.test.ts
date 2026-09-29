@@ -459,8 +459,11 @@ test("new ownership generation supersedes queued stale terminal events", async (
   await nativePort.onMessage.emit({
     schemaVersion: {major: 1, minor: 3}, type: "RECONCILE_TRIGGER", requestId: "reconcile-generation-2",
     sessionId: armRequest.sessionId, jobId: "job-generation-migration", envelope: "Path: x",
-    ownershipGeneration: 2, allowUnsentSend: false, deadline: new Date(Date.now() + 10_000).toISOString(),
+    ownershipGeneration: 2, allowUnsentSend: false, allowMissingSend: true, deadline: new Date(Date.now() + 10_000).toISOString(),
   });
+  const forwarded = h.tabMessages.find(({message}) => message.kind === "RECONCILE_TRIGGER")?.message;
+  assert.equal(forwarded.allowMissingSend, true);
+  assert.equal(forwarded.allowUnsentSend, false);
   assert.equal(h.pendingTerminal(), null);
   assert.ok(nativePort.messages.some((message) =>
     message.type === "RECONCILE_TRIGGER_ACCEPTED"

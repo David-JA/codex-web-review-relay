@@ -282,6 +282,8 @@ CREATED -> DISPATCHED -> USER_TURN_ACKED -> ASSISTANT_STARTED -> TURN_IDLE
 
 **手动恢复**：只有 `recover_review(handoff_file, confirm_unsent=true)` 才能在终态 `MISMATCH` 后重新 dispatch。这是一次性审计操作——仅在确认原始消息确实未发送后使用。
 
+若失败发生在请求写入之前，手动恢复可以重新填入空输入框；自动 reconciliation 不允许这样做。已有的其他草稿会保留，若找到匹配消息则继续监听，不重复发送。此恢复能力需要同时更新 native host 和扩展。首次发送前，短暂的 DOM 身份歧义最多等待 2.5 秒，其间不写入或点击；持续歧义仍会停止请求。诊断保留部分消息结构，并区分 `before-write`、`before-click`、`after-click` 失败。`Check page` 是独立快照，不能证明失败的 job 已发送或恢复。
+
 `TURN_IDLE` 表示浏览器传输结束。必须按 `target_kind` 分支处理正式结论：`pr` 的 `assistant_output` 只是短的 transport confirmation，Agent 必须 read back PR comment，并核对 actor、reviewed head 与 scope；`commit` 的 `assistant_output` 是完整正式结论，SHA-256 用于完整性校验。不要把 PR mode 的 `assistant_output` 当成正式结论解析。
 
 ## Review-Fix 轮次限制

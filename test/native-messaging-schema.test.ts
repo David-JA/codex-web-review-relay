@@ -68,6 +68,8 @@ test("native v1.3 schema accepts actual extension diagnostics messages", () => {
   }));
   assert.doesNotThrow(() => validate({...triggerBase, type: "DISPATCH_TRIGGER"}));
   assert.doesNotThrow(() => validate({...triggerBase, type: "RECONCILE_TRIGGER", allowUnsentSend: false}));
+  assert.doesNotThrow(() => validate({...triggerBase, type: "RECONCILE_TRIGGER", allowUnsentSend: true, allowMissingSend: true}));
+  assert.throws(() => validate({...triggerBase, type: "RECONCILE_TRIGGER", allowUnsentSend: true, allowMissingSend: "true"}));
   assert.doesNotThrow(() => validate({...triggerBase, type: "DISPATCH_TRIGGER", reviewMode: "pr-comment"}));
   assert.doesNotThrow(() => validate({...triggerBase, type: "RECONCILE_TRIGGER", reviewMode: "pr-comment", allowUnsentSend: false}));
   assert.doesNotThrow(() => validate({

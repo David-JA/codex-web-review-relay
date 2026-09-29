@@ -144,13 +144,14 @@ function harness(ackDelayMs = 0) {
     return response;
   }
 
-  function reconcile(deadlineMs = 2_000) {
+  function reconcile(deadlineMs = 2_000, overrides = {}) {
     return new Promise<any>((resolveResponse) => {
       runtimeListeners[0]({
         kind: "RECONCILE_TRIGGER", jobId: "job-1", envelope: "Path: x",
         reviewMode: "relay-only", allowUnsentSend: true,
         bindingGeneration: "binding-1", ownershipGeneration: 1,
         deadline: new Date(Date.now() + deadlineMs).toISOString(),
+        ...overrides,
       }, {}, resolveResponse);
     });
   }
@@ -340,6 +341,21 @@ test("relay-only reconcile ignores a code-copy marker until turn completion evid
   assert.equal((await h.reconcile(1_200)).ok, true);
   await waitFor(() => h.events.includes("TURN_TIMEOUT"), 2_500);
   assert.equal(h.events.includes("TURN_IDLE"), false);
+});
+
+test("missing request is dispatched only with explicit manual recovery and send budget", async () => {
+  for (const overrides of [{}, {allowMissingSend: true, allowUnsentSend: false}]) {
+    const h = harness();
+    await h.reconcile(500, overrides);
+    await waitFor(() => h.events.includes("RECONCILE_MISMATCH"));
+    assert.equal(h.calls.dispatch, 0);
+  }
+  const h = harness();
+  await h.reconcile(300, {allowMissingSend: true});
+  await waitFor(() => h.events.includes("USER_TURN_ACKED") || h.events.includes("RECONCILE_MISMATCH"));
+  assert.equal(h.calls.dispatch, 1);
+  assert.ok(h.events.includes("USER_TURN_ACKED"));
+  await waitFor(() => h.events.includes("TURN_TIMEOUT"));
 });
 
 test("draft resume failure emits structural diagnostics before SEND_UNCERTAIN", async () => {

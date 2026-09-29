@@ -188,11 +188,11 @@
     void inspect();
   }
 
-  async function runDispatch(message) {
+  async function runDispatch(message, requireEmpty = false) {
     diagnostic("info", "dispatch_started", {jobId: message.jobId, bindingGeneration: message.bindingGeneration, ownershipGeneration: message.ownershipGeneration});
     try {
       const state = typeof adapter.dispatchTracked === "function"
-        ? await adapter.dispatchTracked(document, message.envelope)
+        ? await adapter.dispatchTracked(document, message.envelope, {requireEmpty, deadline: Date.parse(message.deadline)})
         : await adapter.dispatch(document, message.envelope);
       const job = {jobId: message.jobId, deadline: Date.parse(message.deadline), bindingGeneration: message.bindingGeneration, ownershipGeneration: message.ownershipGeneration};
       diagnostic("info", "user_turn_observed", job);
@@ -202,7 +202,7 @@
       const summary = typeof adapter.trackedTurnObservation === "function"
         ? await emitStructuralDiagnostics(message, error?.turnTracker ?? null)
         : (typeof adapter.turnObservation === "function" ? adapter.turnObservation(document, null, message.envelope) : {});
-      diagnostic("error", "dispatch_receipt_missing", {jobId: message.jobId, bindingGeneration: message.bindingGeneration, ownershipGeneration: message.ownershipGeneration}, {...summary, error_code: error instanceof Error ? error.message.split(":", 1)[0] : "DISPATCH_FAILED"});
+      diagnostic("error", "dispatch_receipt_missing", {jobId: message.jobId, bindingGeneration: message.bindingGeneration, ownershipGeneration: message.ownershipGeneration}, {...summary, state: error?.dispatchStage ?? "unknown", error_code: error instanceof Error ? error.message.split(":", 1)[0] : "DISPATCH_FAILED"});
       throw error;
     }
   }
@@ -233,6 +233,11 @@
         await emitStructuralDiagnostics(message, error?.turnTracker ?? null);
         throw error;
       }
+      return;
+    }
+    if (observed.state === "missing" && message.allowUnsentSend === true && message.allowMissingSend === true
+      && typeof adapter.dispatchTracked === "function") {
+      await runDispatch(message, true);
       return;
     }
     await sendLifecycleUntilAck("RECONCILE_MISMATCH", {

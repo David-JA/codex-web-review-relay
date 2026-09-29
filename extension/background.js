@@ -109,6 +109,7 @@ async function onNativeMessage(message) {
     const response = await chrome.tabs.sendMessage(armed.tabId, {
       kind: message.type, jobId: message.jobId, envelope: message.envelope, reviewMode: message.reviewMode,
       deadline: message.deadline, allowUnsentSend: message.allowUnsentSend,
+      allowMissingSend: message.allowMissingSend,
       bindingGeneration: armed.bindingGeneration, documentId: armed.documentId,
       ownershipGeneration: message.ownershipGeneration,
     });
