@@ -73,6 +73,9 @@
 
 - `README.md` 与 `README.zh-CN.md` **必须同步改**，不得只改英文。
 - 术语对齐：helper vs native host；transport completion（`TURN_IDLE`）vs formal verdict；recovery phase vs terminal phase；relay-only verdict vs PR comment。
+- 消费者通用使用入口为 `docs/consumer-guide.md`，集中路由功能、安装升级、诊断、恢复和版本限制；行为仍以源码与契约为准，不另建平行规则或逐次会话流水账。
+- **内部 Bug 修复通常只维护插件仓库；只有调用方式、兼容性或消费者自身流程变化，才需要同步消费者 convention。** 插件发布时说明消费者是否需要动作；需要更新组件不等于需要复制修复细节到消费者文档。消费者采用新版本时只更新必要的版本指针与适用要求。
+- 消费者保留采用版本、评审模式、项目授权、formal verdict 来源及本地治理规则，通用操作指向对应 tag 的指南；开发验证可以固定 commit，并明确未发布。不以 `main` 或本机路径代表已安装版本，不让插件参考流程覆盖项目规则。发布时同步指南中的能力状态及迁移说明；未发布能力不得归入已有 release。
 
 ## 安全与持久化
 

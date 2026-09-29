@@ -282,7 +282,7 @@ CREATED -> DISPATCHED -> USER_TURN_ACKED -> ASSISTANT_STARTED -> TURN_IDLE
 
 **手动恢复**：只有 `recover_review(handoff_file, confirm_unsent=true)` 才能在终态 `MISMATCH` 后重新 dispatch。这是一次性审计操作——仅在确认原始消息确实未发送后使用。
 
-若失败发生在请求写入之前，手动恢复可以重新填入空输入框；自动 reconciliation 不允许这样做。已有的其他草稿会保留，若找到匹配消息则继续监听，不重复发送。此恢复能力需要同时更新 native host 和扩展。首次发送前，短暂的 DOM 身份歧义最多等待 2.5 秒，其间不写入或点击；持续歧义仍会停止请求。诊断保留部分消息结构，并区分 `before-write`、`before-click`、`after-click` 失败。`Check page` 是独立快照，不能证明失败的 job 已发送或恢复。
+**以下修复尚未发布，不包含在 v0.3.1 安装包中：**若失败发生在请求写入之前，手动恢复可以重新填入空输入框；自动 reconciliation 不允许这样做。已有的其他草稿会保留，若找到匹配消息则继续监听，不重复发送。此恢复能力需要同时更新 native host 和扩展。首次发送前，短暂的 DOM 身份歧义最多等待 2.5 秒，其间不写入或点击；持续歧义仍会停止请求。诊断保留部分消息结构，并区分 `before-write`、`before-click`、`after-click` 失败。`Check page` 是独立快照，不能证明失败的 job 已发送或恢复。
 
 `TURN_IDLE` 表示浏览器传输结束。必须按 `target_kind` 分支处理正式结论：`pr` 的 `assistant_output` 只是短的 transport confirmation，Agent 必须 read back PR comment，并核对 actor、reviewed head 与 scope；`commit` 的 `assistant_output` 是完整正式结论，SHA-256 用于完整性校验。不要把 PR mode 的 `assistant_output` 当成正式结论解析。
 
@@ -311,6 +311,8 @@ else:
 每轮有唯一 fingerprint（轮次编号是 relay export 的一部分），因此 relay 天然防止同一轮的意外重复 dispatch。
 
 ## 在你的仓库中集成
+
+先读[消费者使用指南](docs/consumer-guide.md)，按需查阅通用操作、排障、版本边界和 convention 同步条件。项目自身的授权与正式结论规则留在消费者仓库；共享文档固定到采用的 release tag，或明确标注的开发 commit。
 
 Relay 内置一个**relay-owned exporter**，从 handoff 文件生成 `relay-export` JSON。Producer 仓库只需生成规范的 tracked handoff，不需要复制 helper 或注册仓库。
 

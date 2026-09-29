@@ -284,7 +284,7 @@ CREATED -> DISPATCHED -> USER_TURN_ACKED -> ASSISTANT_STARTED -> TURN_IDLE
 
 **Manual recovery**: only `recover_review(handoff_file, confirm_unsent=true)` can re-dispatch after a terminal `MISMATCH`. This is a one-shot, audited operation — use it only after confirming the original message was never sent.
 
-If the failure happened before the request was written, manual recovery may refill an empty composer. Automatic reconciliation cannot do this; unrelated drafts are preserved and an existing matching message is monitored without resending. This recovery requires the updated native host and extension. Before initial dispatch, transient DOM identity ambiguity is retried for at most 2.5 seconds without writing or clicking; persistent ambiguity still stops the request. Diagnostic events retain partial turn structure and distinguish `before-write`, `before-click`, and `after-click` failures. `Check page` is a separate snapshot, not evidence that a failed job was sent or recovered.
+**Unreleased; not included in v0.3.1 assets:** if the failure happened before the request was written, manual recovery may refill an empty composer. Automatic reconciliation cannot do this; unrelated drafts are preserved and an existing matching message is monitored without resending. This recovery requires the updated native host and extension. Before initial dispatch, transient DOM identity ambiguity is retried for at most 2.5 seconds without writing or clicking; persistent ambiguity still stops the request. Diagnostic events retain partial turn structure and distinguish `before-write`, `before-click`, and `after-click` failures. `Check page` is a separate snapshot, not evidence that a failed job was sent or recovered.
 
 `TURN_IDLE` means the browser transport finished. Branch formal-verdict handling by `target_kind`: for `pr`, `assistant_output` is only a short transport confirmation and the agent must read back the PR comment, checking actor, reviewed head, and scope; for `commit`, `assistant_output` is the complete formal verdict and its SHA-256 is the integrity check. Do not parse PR-mode `assistant_output` as the formal verdict.
 
@@ -313,6 +313,8 @@ else:
 Each round gets a unique fingerprint (round number is part of the relay export), so the relay naturally prevents accidental re-dispatch of the same round.
 
 ## Integration with Your Repository
+
+Start with the [consumer guide](docs/consumer-guide.md) (Chinese) for shared usage, troubleshooting, version boundaries, and when consumer conventions need updating. Keep project-specific authorization and verdict rules in the consuming repository; pin shared documentation to the adopted release tag, or an explicit development commit.
 
 The relay includes a **relay-owned exporter** that produces a `relay-export` JSON from a handoff file. Producer repositories only need to generate the canonical tracked handoff; no helper copy or repository registration is required.
 
