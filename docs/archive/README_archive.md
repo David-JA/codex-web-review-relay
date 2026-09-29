@@ -4,6 +4,8 @@
 
 ## 已归档
 
+- [`20260929_presend_recovery.md`](20260929_presend_recovery.md)：发送前恢复修复、消费者集中指南、两轮完整 MCP PASS 证据及 v0.3.2 发布收尾；原故障 DOM 根因与真实空输入框恢复仍未验证。
+
 - [`20260928_chatgpt_modern_dom.md`](20260928_chatgpt_modern_dom.md)：ChatGPT 新版 DOM 适配、只读 Check page 与 IAB 完整 MCP 回传验收。Commit-only formal verdict 为 PASS；已完成的 handoff 从 current tree 清理，固定 commit 链接保留评审依据。
 
 - [`20260729_agents_handoff_root_compat.md`](20260729_agents_handoff_root_compat.md)：`.agent/` / `.agents/` handoff root 兼容回填、formal review、active native-host 原位重装与 Tabbit Browser/Codex runtime readback。Terminal commit-only review 为 `PASS`，tracked handoff 已清理；topic branch 已推送，merge/tag/branch deletion 未执行。

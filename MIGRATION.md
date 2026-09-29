@@ -1,18 +1,24 @@
-# Upgrade to v0.3.1
+# Upgrade to v0.3.2
 
-## Existing v0.3.0 user-scoped installations
+## Existing v0.3.0 / v0.3.1 user-scoped installations
 
 The MCP request shape, protocol version and formal-verdict modes are unchanged. Consumer repositories do not need to rewrite handoffs or install a repository-owned helper.
 
-For the ChatGPT DOM fix and Check page alone, update the extension: verify the v0.3.1 extension ZIP against SHA256SUMS.txt, extract it to the directory actually loaded by the browser (or select the new directory), reload the extension, and refresh the target ChatGPT conversation. If the binding is lost, manually Arm the intended conversation again. Updating extension files alone does not rotate the native-host token. Check page is read-only and optional; success is not end-to-end transport acceptance.
+Download both v0.3.2 ZIP assets and verify SHA256SUMS.txt. To use operator-confirmed empty-composer recovery, update **both the native host and the extension**; an extension-only update does not supply the native-host recovery permission. Older components retain conservative behavior.
 
-To receive all v0.3.1 native-host fixes, including `.agents/` handoff paths and configured remote fallbacks, also install the v0.3.1 native-host asset into the existing InstallRoot after finishing any active review. Reinstallation rebuilds configuration and rotates the Bearer token: preserve any intentional configuration overrides, update saved MCP Authorization headers and restart affected clients. Do not run a native smoke against an active host or armed session.
+Finish any active review before upgrading. Install the v0.3.2 native-host asset into the existing InstallRoot. Reinstallation rebuilds configuration and rotates the Bearer token: preserve intentional configuration overrides, update saved MCP Authorization headers and restart affected clients. Updating a source checkout does not update an installed runtime.
+
+Replace the files in the extension directory actually loaded by the browser (or select the new directory), reload the extension, then refresh the target ChatGPT conversation. If the binding is lost, manually Arm the intended conversation again. Re-Arming alone does not load new code. Check page is optional and read-only; success does not prove sending or complete result capture. Do not run a native smoke against an active host or armed session.
+
+Manual recovery still requires confirmation that the original request was never sent and remains a one-shot operation. Do not reset persisted jobs or manufacture a new round to bypass an exhausted recovery allowance. The update does not prove the root cause of an earlier page failure or retroactively recover an old job.
+
+Consumer conventions do not need new API arguments or rewritten handoffs. When adopting v0.3.2, update the supported-version pointer and route shared usage to the [v0.3.2 consumer guide](https://github.com/David-JA/codex-web-review-relay/blob/v0.3.2/docs/consumer-guide.md); keep project authorization and formal-verdict rules local.
 
 ## Older repository-bound installations
 
 Older installations may contain `repositoryRoot`, `helperPath`, a producer-owned helper, or a launcher bound to a previous clone path. They are not migrated in place automatically.
 
-1. Download and extract the v0.3.1 native-host Windows asset.
+1. Download and extract the v0.3.2 native-host Windows asset.
 2. Run the installer again with the existing `<InstallRoot>`.
 3. Confirm that `<InstallRoot>\runtime\src\cli.ts`, `<InstallRoot>\runtime\contracts`, and `<InstallRoot>\relay_export_helper.py` exist.
 4. Confirm that the new `relay.config.json` contains no `repositoryRoot` or `helperPath` and that the native-host manifest points to `<InstallRoot>\codex-web-review-relay.exe`.

@@ -1,0 +1,17 @@
+{
+  "job_id": "ab7d7f28-8210-4bcd-8ca3-2e303f13855e",
+  "fingerprint": "54cf49fc048b1837625f2e860b2c077f1f200b9b96895a576b49f646f36cee0b",
+  "repository": "David-JA/codex-web-review-relay",
+  "target_kind": "commit",
+  "target_id": "review-presend-recovery",
+  "target_pr": null,
+  "handoff_path": ".agents/review_handoffs/review-presend-recovery/stage1-main/round-02-review-fix.md",
+  "handoff_sha256": "ead137883a35fd2854d47930bda906ca6ae8cf931831d4c99cd150074e47d4bb",
+  "reviewed_head": "38e0ce3a80068d90a70c4d78fd2ead2dff668157",
+  "phase": "TURN_IDLE",
+  "result": "completed",
+  "error_code": null,
+  "assistant_output": "Reviewed head: 38e0ce3a80068d90a70c4d78fd2ead2dff668157\n\nRELAY_REVIEW_BEGIN\n\nVerdict: PASS\n\n纯文本\nRepository: David-JA/codex-web-review-relay\nTarget kind: commit\nTarget ID: review-presend-recovery\nFull Ref: refs/heads/codex/relay-presend-recovery\nReviewed head: 38e0ce3a80068d90a70c4d78fd2ead2dff668157\nCompared base: 3ff0880ec241b91b4d885410ec8cd82f24e5a585\nImplementation commit: 5d16d760587395764cf64da3d7f34c3c17c9b63e\nDocumentation commit: f6ddeb210d9b6efcafcb6b6ced7ed9cdfc22097b\nReview stream: stage1-main\nEffective round: 2\nPackage kind: review-fix\nReview scope: final presend recovery branch and centralized consumer guidance\nReviewer: Web Agent — independent review\nFindings: None\nPublication: Assistant response only; no GitHub writes\nTransport acceptance: PENDING_REPO_VERIFICATION\n\n**本轮通过。上一轮实现评审结论保持有效，新增消费者指南及其路由也通过本轮独立审阅；未发现需要修复的阻塞项。**读取时分支 head 与请求一致。已比较 base 至当前 head、上一轮 reviewed head 至当前 head 的变更清单，并读取文档提交的实际 diff 和当前版本正文；上一轮之后没有运行时代码或测试变更。\n\n核验结论\n\n文档维护边界明确。docs/agent_conventions.md 正确区分“内部 Bug 修复通常只维护插件仓库”与“调用方式、兼容性或消费者自身流程变化时同步消费者 convention”。采用新版本时更新必要版本指针，不要求把通用排障和实现细节复制到各消费者仓库。指南对此采用引用路由，没有另建一套维护规则。\n\n**指南没有扩大授权或改写正式结论来源。**它明确保留消费者自身的触发权限、评审模式、Stage Gate 和本地治理；区分 PR-comment readback 与 commit-only 完整 MCP 输出，不将网页 PASS、Check page 或插件参考流程当作发送、恢复、merge、release 的授权。AGENTS 和双语 README 的新增入口与这一定位一致。\n\n**版本归属与升级说明一致。**双语 README 均将 presend recovery 标为未发布、未包含在 v0.3.1 安装包中；指南使用完整实现 SHA 标识开发修复，没有把 checkout 或 package version 等同于已安装能力。另已核对 v0.3.1 release、迁移说明及该 tag 的文档目录：指南关于旧版没有 consumer-guide.md、应继续使用旧版 README/MIGRATION/conventions 的说明正确，扩展重载与 native-host 升级、token 旋转也没有混为一谈。\n\n验证限制\n\n本轮执行的是远端 diff、文档正文、权威路由及版本边界核对，未重新运行测试。未变化的实现沿用上一轮评审；handoff 报告的 Sol 评审、Node 24.17 下 39 项测试及 10 个链接检查均属于 Repo Agent 提供的验证记录，不计作本轮独立执行。\n\n上一轮正常发送与完整 MCP 回传，按本轮 handoff 作为 Repo Agent 已核验的历史证据处理，本次未独立读取该 job。原消费者失败页面的具体 DOM 根因、真实页面空输入框恢复，以及本轮完整 MCP 接收和 SHA-256 核验仍为 UNVERIFIED；不由此前成功记录推定通过。\n\n无新增修复要求。未修改消费者仓库、安装环境或 GitHub，未执行 merge/release。\n\nRELAY_REVIEW_END\n[END OF REVIEW]",
+  "assistant_output_sha256": "32e6dc26f97a051a571aad912bb2a935ba5aee3b40c7b9948c09398cb6e6b83b",
+  "deadline": "2026-09-29T10:50:39.166Z"
+}

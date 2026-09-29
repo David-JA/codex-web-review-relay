@@ -8,12 +8,12 @@
 
 | 能力或修复 | 可用范围 | 消费者需要做什么 |
 |---|---|---|
-| 新版 ChatGPT turn 解析、只读 `Check page`，以及 `.agents/` handoff 与配置 remote fallback 修复 | 已发布 `v0.3.1` | 按该版本的 [MIGRATION.md](../MIGRATION.md) 更新所需组件；调用接口和现有 handoff 无需改写 |
-| 发送前短暂身份歧义的有限重试、失败阶段与部分结构诊断、人工确认后的空输入框恢复 | **未发布**；实现 commit `5d16d760587395764cf64da3d7f34c3c17c9b63e`，不包含在 `v0.3.1` 安装包中 | 使用该开发修复需同时更新 native host 和扩展；正式升级以包含该修复的后续 release 及其迁移说明为准 |
+| 新版 ChatGPT turn 解析、只读 `Check page`，以及 `.agents/` handoff 与配置 remote fallback 修复 | 已发布 `v0.3.1` | 按 [v0.3.1 MIGRATION.md](https://github.com/David-JA/codex-web-review-relay/blob/v0.3.1/MIGRATION.md) 更新所需组件；调用接口和现有 handoff 无需改写 |
+| 发送前短暂身份歧义的有限重试、失败阶段与部分结构诊断、人工确认后的空输入框恢复 | `v0.3.2`；实现 commit `5d16d760587395764cf64da3d7f34c3c17c9b63e`，不包含在 `v0.3.1` 安装包中 | 同时更新 native host 和扩展，步骤见 [MIGRATION.md](../MIGRATION.md) |
 
-此指南首次随上述修复分支加入，`v0.3.1` tag 中没有本文件。仍采用 `v0.3.1` 的消费者继续使用该 tag 的 README、MIGRATION 与 conventions；不要构造不存在的 `v0.3.1/docs/consumer-guide.md` 链接。采用包含指南的新 release 时再切换入口。
+此指南从 `v0.3.2` 起提供，`v0.3.1` tag 中没有本文件。仍采用 `v0.3.1` 的消费者继续使用该 tag 的 README、MIGRATION 与 conventions；不要构造不存在的 `v0.3.1/docs/consumer-guide.md` 链接。采用 `v0.3.2` 或后续包含指南的 release 时再切换入口。
 
-未发布修复已通过范围内代码评审，指定测试会话已完成正常发送与完整 MCP 回传。原消费者失败页面的具体 DOM 根因、真实页面上的空输入框恢复仍未验证；模拟测试不能代替这些验证。范围与请求见[本轮 handoff](../.agents/review_handoffs/review-presend-recovery/stage1-main/round-01-review-request.md)。发布时维护本节的版本归属与验证边界，历史细节留在 release notes、Git 历史或归档中。
+该修复已通过范围内代码评审，指定测试会话已完成正常发送与完整 MCP 回传。原消费者失败页面的具体 DOM 根因、真实页面上的空输入框恢复仍未验证；模拟测试不能代替这些验证。范围与请求见[归档验收记录](archive/20260929_presend_recovery.md)。发布时维护本节的版本归属与验证边界，历史细节留在 release notes、Git 历史或归档中。
 
 ## 插件负责什么
 
@@ -58,7 +58,7 @@ Native host 是独立组件，修改插件 checkout 或重载扩展不会自动�
 |---|---|
 | Arm / connected 正常，但请求失败 | 它们只证明绑定和连接状态；按 job 诊断定位 exporter、native delivery、DOM receipt 或 ACK，不由一个状态猜测根因 |
 | `Check page` 通过 | 只证明检查时挂载 DOM 的快照可解析；不证明故障发生时页面正常，也不证明发送或完整回传成功 |
-| `MESSAGE_IDENTITY_AMBIGUOUS` | 查看失败阶段和结构诊断；未发布修复仅对短暂歧义有限重试，持续歧义仍停止，不任意选择重复节点继续发送 |
+| `MESSAGE_IDENTITY_AMBIGUOUS` | 查看失败阶段和结构诊断；v0.3.2 仅对短暂歧义有限重试，持续歧义仍停止，不任意选择重复节点继续发送 |
 | `SESSION_LOST` / `SEND_UNCERTAIN` | 核对当前 binding 与诊断；满足恢复条件后，同一 handoff 的 `request_review` 可进入 reconciliation，不创建新 fingerprint 绕过旧 job |
 | terminal `MISMATCH` 且确认原消息未发送 | 经人工确认后才可调用一次性 `recover_review(handoff_file=..., confirm_unsent=true)`；不能从空输入框或 Check page 单独推断未发送。空输入框重填还受上方版本限制约束 |
 | 网页已有完整回复，MCP 没有完整结果 | Commit-only transport 尚未验收；保留诊断并报告，不能用网页复制替代成功回传 |

@@ -44,7 +44,7 @@ async function request(path: string, body?: Record<string, unknown>, extraHeader
 }
 
 const sessionId = randomUUID();
-child.stdin.write(encodeNativeMessage({schemaVersion: NATIVE_SCHEMA_VERSION, type: "ARM_SESSION", requestId: "smoke-arm", sessionId, extensionVersion: "0.3.1"}));
+child.stdin.write(encodeNativeMessage({schemaVersion: NATIVE_SCHEMA_VERSION, type: "ARM_SESSION", requestId: "smoke-arm", sessionId, extensionVersion: "0.3.2"}));
 await waitFor("SESSION_ARMED");
 let health: Record<string, unknown> | undefined;
 for (let attempt = 0; attempt < 40; attempt += 1) {
@@ -58,7 +58,7 @@ if (health?.status !== "ok" || (health.schema_version as Record<string, unknown>
 const initialized = await request("/mcp", {jsonrpc: "2.0", id: 1, method: "initialize", params: {} });
 const initializeResult = initialized.result as Record<string, unknown>;
 const serverInfo = initializeResult?.serverInfo as Record<string, unknown>;
-if (serverInfo?.version !== "0.3.1" || !String(initializeResult?.instructions).includes("absolute handoff_file")) throw new Error("SMOKE_INITIALIZE_INVALID");
+if (serverInfo?.version !== "0.3.2" || !String(initializeResult?.instructions).includes("absolute handoff_file")) throw new Error("SMOKE_INITIALIZE_INVALID");
 const listed = await request("/mcp", {jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }, {"mcp-protocol-version": "2025-11-25"});
 const tools = (listed.result as Record<string, unknown>)?.tools as Array<Record<string, unknown>>;
 if (!Array.isArray(tools) || !tools.some((tool) => tool.name === "request_review")) throw new Error("SMOKE_TOOLS_LIST_INVALID");
