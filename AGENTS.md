@@ -20,6 +20,7 @@
 | 修改 README 或任何公开文档 | `docs/agent_conventions.md` §文档同步，并读 `README.md` + `README.zh-CN.md` |
 | 安全 / 持久化边界 | `docs/agent_conventions.md` §安全与持久化 |
 | 安装 / 外部集成（面向用户） | `README.md`（Quick Start / Integration） |
+| 消费者接入、使用排障或判断是否同步 convention | `docs/consumer-guide.md`；维护规则见 `docs/agent_conventions.md` §文档同步 |
 | 架构来源 / 许可证边界 | `docs/reference-architecture-audit.md` |
 
 ## 红线（不可违反；细则在 conventions）

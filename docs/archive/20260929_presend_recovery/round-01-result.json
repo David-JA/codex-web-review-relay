@@ -1,0 +1,17 @@
+{
+  "job_id": "3199f7b0-ef19-4923-98e7-bd3cf1015273",
+  "fingerprint": "8a4cc3d4e7eff51316d1366a438bf0c44fa7cfa796730fca9bcf92c8150a015a",
+  "repository": "David-JA/codex-web-review-relay",
+  "target_kind": "commit",
+  "target_id": "review-presend-recovery",
+  "target_pr": null,
+  "handoff_path": ".agents/review_handoffs/review-presend-recovery/stage1-main/round-01-review-request.md",
+  "handoff_sha256": "b5f0a1027353682713c7a8a1418e301fe2421d166f4e9ceacd934023680260aa",
+  "reviewed_head": "3b7c36b3db76129d90dd2c9e45dc985a3495dec1",
+  "phase": "TURN_IDLE",
+  "result": "completed",
+  "error_code": null,
+  "assistant_output": "Reviewed head: 3b7c36b3db76129d90dd2c9e45dc985a3495dec1\n\nRELAY_REVIEW_BEGIN\n\nVerdict: PASS\n\n纯文本\nRepository: David-JA/codex-web-review-relay\nTarget kind: commit\nTarget ID: review-presend-recovery\nFull Ref: refs/heads/codex/relay-presend-recovery\nReviewed head: 3b7c36b3db76129d90dd2c9e45dc985a3495dec1\nImplementation commit: 5d16d760587395764cf64da3d7f34c3c17c9b63e\nCompared base: 3ff0880ec241b91b4d885410ec8cd82f24e5a585\nReview stream: stage1-main\nEffective round: 1\nPackage kind: review-request\nReview scope: pre-send DOM stabilization, structural diagnostics, and operator-confirmed empty-composer recovery\nReviewer: Web Agent — independent review\nFindings: None\nPublication: Assistant response only; no GitHub writes\nTransport acceptance: PENDING_REPO_VERIFICATION\n\n**本轮代码评审通过，未发现需要阻塞此次交付的缺陷。**读取时分支 head 与请求一致；已检查实际实现 diff、exact-head 源码，以及恢复授权和发送额度的上游调用链。\n\n核验结论\n\n发送前稳定化与失败证据符合本轮目标。dispatchTracked() 仅在写入前以 fresh tracker 重试 baseline 初始化，等待预算最多 2.5 秒并受 job deadline 约束；持续身份歧义仍失败，不通过任意选择重复节点继续发送。初始化异常保留部分 tracker，后续诊断携带 dispatchStage，避免再次只得到缺失 tracker、零结构计数。\n\n**空输入框恢复的授权链完整。**服务端先领取一次性 recovery send 额度；native host 只有在额度允许且 manual_recovery_used === 1 时提供 allowMissingSend。Background 转发该字段，content 同时要求两个许可为 true，才进入 requireEmpty 发送路径。普通自动 reconciliation 不会获得空输入框重填能力。新增 schema 字段是可选 boolean，缺省时保持不授权。\n\n**新增恢复路径保留了关键发送保护。**写入前重新查找匹配消息；已存在则继续监控，不重发。不存在时要求输入框为空且页面未生成回复；等待发送按钮后，再检查 deadline 和 composer 精确回读。独立集成测试确认了其他草稿不被覆盖、等待期间编辑草稿不被发送，以及等待期间过期后不点击。\n\n独立执行结果\n本轮实际执行\t结果\n当前提交的 modern DOM suite\t23 passed，0 failed\nReviewer 补充的实际 adapter + content 集成测试\t6 passed，0 failed\n合计\t29 passed，0 failed\n\n补充测试覆盖自动恢复/额度不足时拒绝重填、明确授权后的空输入框恢复、其他草稿保护、已有消息不重发、等待发送期间过期，以及等待期间编辑草稿。授权恢复测试完成：\n\n纯文本\nUSER_TURN_ACKED → ASSISTANT_STARTED → TURN_IDLE\nassistantOutput = \"complete recovered output\"\n\n执行副本中的 adapter、content 和提交的 modern 测试文件均已与 exact-head Git blob SHA 核对一致。\n源码校验记录、补充测试与完整日志\n\n验证限制\n\n本地使用 Node v22.16.0，未在仓库声明的 Node ≥24 环境复跑。Native、schema、background 和 review-transport 的相关改动及调用链已静态检查，但未独立执行其完整测试套件；handoff 报告的 136 项相关回归及 38 项最终增量测试不计入上述独立实测结果。\n\n**原始失败页面的 DOM、该故障的真实根因、真实页面上的空输入框恢复，以及本条结论的完整 MCP 接收结果，仍为 UNVERIFIED。**模拟集成测试不替代浏览器/native/MCP 验证；本次 PASS 不预先宣告传输验收通过。Repo Agent 仍须核验实际接收的完整正文、锚点及 UTF-8 SHA-256。\n\n无新增修复要求。未执行 GitHub 写入、真实恢复发送、merge 或 release。\n\nRELAY_REVIEW_END\n[END OF REVIEW]",
+  "assistant_output_sha256": "40c68bfe1ebbb825eaaf7ae67dc0a6ee5e26a9f775f8aeacdb9a653b6af587b3",
+  "deadline": "2026-09-29T09:15:13.732Z"
+}

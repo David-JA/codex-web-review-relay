@@ -261,6 +261,7 @@ export class NativeBridge {
       reviewMode: input.reviewMode ?? "pr-comment",
       deadline: input.deadline,
       allowUnsentSend: input.allowUnsentSend,
+      allowMissingSend: input.allowUnsentSend && job.manual_recovery_used === 1,
       ownershipGeneration: input.ownershipGeneration ?? job.ownership_generation,
     };
   }

@@ -339,7 +339,15 @@
   }
   function createTurnTracker(document, captureBaseline = true) {
     const tracker = {records: new Map(), order: [], baselineKeys: new Set(), unstableBaselineNodes: new Set()};
-    harvestTurnTracker(document, tracker);
+    try { harvestTurnTracker(document, tracker); }
+    catch (error) {
+      // Initialization can fail before order is committed. Preserve the partial
+      // structural inventory for diagnostics instead of reporting an empty page.
+      tracker.order = mergeObservedOrder(tracker.order, [...tracker.records.keys()]);
+      if (captureBaseline) for (const key of tracker.order) tracker.baselineKeys.add(key);
+      if (error && typeof error === "object") error.turnTracker = tracker;
+      throw error;
+    }
     if (captureBaseline) {
       for (const key of tracker.order) tracker.baselineKeys.add(key);
       for (const record of tracker.records.values()) {
@@ -478,16 +486,39 @@
     const nodes = record?.nodes ?? orderedFragments(record).map((fragment) => fragment.node).filter(Boolean);
     return nodes.length > 0 && isAssistantComplete(document, nodes);
   }
-  async function dispatchTracked(document, envelope) {
-    const tracker = createTurnTracker(document, true);
-    const input = await writeComposer(document, composer(document), envelope);
-    const button = await waitFor(document, () => sendButton(document), "SEND_BUTTON_ENABLE_TIMEOUT");
-    button.click();
+  async function dispatchTracked(document, envelope, options = {}) {
+    let tracker;
+    let dispatchStage = "before-write";
+    const checkDeadline = () => {
+      if (options.deadline !== undefined && (!Number.isFinite(options.deadline) || Date.now() >= options.deadline)) throw new Error("MESSAGE_DEADLINE_EXPIRED");
+    };
     try {
+      checkDeadline();
+      // React may briefly expose duplicate identities while replacing history.
+      // Retry only before any DOM write, with a fresh tracker on each attempt.
+      tracker = await waitFor(document, () => createTurnTracker(document, true), "TURN_BASELINE_NOT_READY",
+        Math.min(2_500, options.deadline === undefined ? 2_500 : options.deadline - Date.now()));
+      checkDeadline();
+      if (options.requireEmpty === true) {
+        const userRecord = findTrackedUserTurn(document, tracker, envelope, true);
+        if (userRecord) return {tracker, userRecord};
+        if (normalizedText(composer(document)) !== "") throw new Error("RECOVERY_COMPOSER_NOT_EMPTY");
+        if (isGenerating(document)) throw new Error("RECOVERY_PAGE_GENERATING");
+      }
+      dispatchStage = "before-click";
+      const input = await writeComposer(document, composer(document), envelope);
+      const button = await waitFor(document, () => sendButton(document), "SEND_BUTTON_ENABLE_TIMEOUT");
+      checkDeadline();
+      if (normalizedText(composer(document)) !== envelope.trim()) throw new Error("COMPOSER_READBACK_MISMATCH");
+      dispatchStage = "after-click";
+      button.click();
       const userRecord = await waitFor(document, () => findTrackedUserTurn(document, tracker, envelope), "SEND_CLICK_RECEIPT_MISSING", 60_000);
       return {tracker, input, button, userRecord};
     } catch (error) {
-      if (error && typeof error === "object") error.turnTracker = tracker;
+      if (error && typeof error === "object") {
+        if (tracker) error.turnTracker = tracker;
+        error.dispatchStage = dispatchStage;
+      }
       throw error;
     }
   }

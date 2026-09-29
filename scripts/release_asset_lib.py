@@ -7,7 +7,7 @@ import stat
 import zipfile
 from pathlib import Path, PurePosixPath
 
-PRODUCT_VERSION = "0.3.1"
+PRODUCT_VERSION = "0.3.2"
 EXTENSION_ASSET = f"codex-web-review-relay-extension-v{PRODUCT_VERSION}.zip"
 NATIVE_ASSET = f"codex-web-review-relay-native-host-windows-v{PRODUCT_VERSION}.zip"
 CHECKSUM_FILE = "SHA256SUMS.txt"

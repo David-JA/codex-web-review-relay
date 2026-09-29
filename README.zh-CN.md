@@ -52,9 +52,9 @@
 
 安装面向本机用户，而不是某个仓库。每次请求提供一个绝对 `handoff_file`，relay 为该请求解析 Git root 和一个已配置 remote 的 canonical slug。它优先使用 `origin`，再按 `github`、`upstream`、`agent`、`gitee` 等常见 remote 名称尝试，因此不要求 checkout 重命名现有 remote。当前版本仍是 single-active-job：不同仓库可以顺序复用，但不支持队列或并发 reviewer conversation。
 
-## v0.3.1 Release
+## v0.3.2 Release
 
-`v0.3.1` 是兼容性补丁版本，适配新版 ChatGPT 页面，新增只读页面诊断，并包含已合并的 handoff/状态修复。详见 [Release notes](release-notes-v0.3.1.md) 和 [升级说明](MIGRATION.md)。请从 GitHub Release 下载 `codex-web-review-relay-extension-v0.3.1.zip`、`codex-web-review-relay-native-host-windows-v0.3.1.zip` 和 `SHA256SUMS.txt`。GitHub 自动生成的 source archives 不是安装资产。
+`v0.3.2` 修复输入框写入前失败后的恢复问题，增加发送前有限稳定化、人工确认后的空输入框恢复，并集中维护消费者指南。使用新的恢复路径需同时升级扩展和 native host。详见 [Release notes](release-notes-v0.3.2.md) 和 [升级说明](MIGRATION.md)。请从 GitHub Release 下载 `codex-web-review-relay-extension-v0.3.2.zip`、`codex-web-review-relay-native-host-windows-v0.3.2.zip` 和 `SHA256SUMS.txt`。GitHub 自动生成的 source archives 不是安装资产。
 
 Reviewer 可见的 envelope 按 mode 分为两套逐字冻结合同。PR mode 使用：
 
@@ -80,7 +80,7 @@ Commit-only mode 在 `Path:` 后立即插入 `Target kind: commit` 与 `Target I
 - **Git CLI**（解析 repository identity 并验证 tracked handoff）
 - **PowerShell 7 / `pwsh`**
 - **系统可用的 .NET Framework `csc.exe`**（编译 launcher）
-- **Windows**（v0.3.1 installer 仅支持 Windows）
+- **Windows**（v0.3.2 installer 仅支持 Windows）
 
 `requirements-dev.txt` 和 schema test dependencies 属于开发前置条件，不是终端用户安装前置条件。
 
@@ -113,11 +113,11 @@ Transport diagnostics 由 native host 写入安装时配置的固定 `diagnostic
 
 ### 1. 下载 Release 资产
 
-从 `v0.3.1` GitHub Release 下载两个 ZIP 和 `SHA256SUMS.txt`，先校验 checksum 再解压。不要把 GitHub source archive 当作安装包。
+从 `v0.3.2` GitHub Release 下载两个 ZIP 和 `SHA256SUMS.txt`，先校验 checksum 再解压。不要把 GitHub source archive 当作安装包。
 
 ### 2. 从 Windows 资产安装 native host
 
-解压 `codex-web-review-relay-native-host-windows-v0.3.1.zip`，在解压目录中运行：
+解压 `codex-web-review-relay-native-host-windows-v0.3.2.zip`，在解压目录中运行：
 
 ```powershell
 pwsh -NoProfile -File scripts/install-native-host.ps1 -InstallRoot "$env:LOCALAPPDATA\codex-web-review-relay"
@@ -159,13 +159,13 @@ Exporter 由 relay 所有；仓库特定的 stage-gate 治理仍由 producer age
 .\scripts\install-native-host.ps1 -InstallRoot <relay-install-root>
 ```
 
-现有安装不会自行迁移。重新运行 v0.3.1 installer 会重建安装配置、安装 relay-owned exporter 并旋转 Bearer token。完整步骤见 native-host 资产中的 `MIGRATION.md`。
+现有安装不会自行迁移。重新运行 v0.3.2 installer 会重建安装配置、安装 relay-owned exporter 并旋转 Bearer token。完整步骤见 native-host 资产中的 `MIGRATION.md`。
 
 ### 4. 加载扩展
 
 1. 打开 `chrome://extensions`
 2. 启用**开发者模式**
-3. 解压 `codex-web-review-relay-extension-v0.3.1.zip`，点击**加载已解压的扩展程序**选择解压目录；该目录根部必须直接包含 `manifest.json`
+3. 解压 `codex-web-review-relay-extension-v0.3.2.zip`，点击**加载已解压的扩展程序**选择解压目录；该目录根部必须直接包含 `manifest.json`
 
 扩展 ID 固定为：`kkdijpckhlminpolkllmmkldlljakfem`。
 
@@ -282,6 +282,8 @@ CREATED -> DISPATCHED -> USER_TURN_ACKED -> ASSISTANT_STARTED -> TURN_IDLE
 
 **手动恢复**：只有 `recover_review(handoff_file, confirm_unsent=true)` 才能在终态 `MISMATCH` 后重新 dispatch。这是一次性审计操作——仅在确认原始消息确实未发送后使用。
 
+**以下修复从 v0.3.2 起提供：**若失败发生在请求写入之前，手动恢复可以重新填入空输入框；自动 reconciliation 不允许这样做。已有的其他草稿会保留，若找到匹配消息则继续监听，不重复发送。此恢复能力需要同时更新 native host 和扩展。首次发送前，短暂的 DOM 身份歧义最多等待 2.5 秒，其间不写入或点击；持续歧义仍会停止请求。诊断保留部分消息结构，并区分 `before-write`、`before-click`、`after-click` 失败。`Check page` 是独立快照，不能证明失败的 job 已发送或恢复。
+
 `TURN_IDLE` 表示浏览器传输结束。必须按 `target_kind` 分支处理正式结论：`pr` 的 `assistant_output` 只是短的 transport confirmation，Agent 必须 read back PR comment，并核对 actor、reviewed head 与 scope；`commit` 的 `assistant_output` 是完整正式结论，SHA-256 用于完整性校验。不要把 PR mode 的 `assistant_output` 当成正式结论解析。
 
 ## Review-Fix 轮次限制
@@ -309,6 +311,8 @@ else:
 每轮有唯一 fingerprint（轮次编号是 relay export 的一部分），因此 relay 天然防止同一轮的意外重复 dispatch。
 
 ## 在你的仓库中集成
+
+先读[消费者使用指南](docs/consumer-guide.md)，按需查阅通用操作、排障、版本边界和 convention 同步条件。项目自身的授权与正式结论规则留在消费者仓库；共享文档固定到采用的 release tag，或明确标注的开发 commit。
 
 Relay 内置一个**relay-owned exporter**，从 handoff 文件生成 `relay-export` JSON。Producer 仓库只需生成规范的 tracked handoff，不需要复制 helper 或注册仓库。
 

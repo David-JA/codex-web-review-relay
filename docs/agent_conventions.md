@@ -60,6 +60,8 @@
 - **Formal verdict polling default**：确认 dispatch 成功且进入 `send-observed` 后，首次服务端 formal-result 观察窗口默认等待 **10 分钟**；首次仍无正式 verdict 时，后续以 **5 分钟**为默认轮询间隔，直到 terminal phase、hard deadline 或 fail-closed 停止条件。首次 10 分钟是深度评审观察窗口，不是 timeout，也不得触发重复 dispatch 或新 round。该默认同时适用于 PR-comment 与 commit-only review；PR-comment 仍必须以 GitHub PR comment 为 formal source。
 - **同 fingerprint 重试幂等**：active 则加入现有等待；terminal 则立即返回存储结果。
 - **手动恢复**：仅 `recover_review(handoff_file, confirm_unsent=true)` 可在 terminal `MISMATCH` 后重 dispatch，一次性，须确认原消息未发送；使用完整 relay fingerprint 定位 job。
+  - native host 仅在已记录人工确认且本次仍有 recovery send 额度时附加 `allowMissingSend=true`；缺省为不允许。扩展先重新核对已有消息，再允许填入空且未生成回复的输入框，不覆盖其他草稿。自动 reconciliation 仍只续发精确匹配的草稿。旧组件忽略或不提供该可选字段时保持原有保守行为。
+  - 发送前 baseline 初始化可有限重试短暂身份歧义（最多 2.5 秒，并受 job deadline 约束），不得通过选择任意重复节点消除真正的身份冲突。初始化失败仍保留部分 tracker 证据；`dispatch_receipt_missing.state` 区分 `before-write` / `before-click` / `after-click`，不能把未写入的失败误读为已点击。
 - **`TURN_IDLE`**：表示浏览器 transport completion。PR mode 的 `assistant_output` 只应是非空短确认，formal verdict 必须从目标 PR comment readback；commit-only relay-only mode 的 `assistant_output` 是正式结论，且只能在 dispatch 后新增 assistant turn 已按稳定 DOM identity 完整 harvest、存在可在 reconnect 后复核的 turn-level completion evidence（例如该 turn 的 copy action）、内容保持稳定，并收到 native ACK 后 terminalize。仅观察到一段稳定文本、或曾经观察到 generating，都不是充分证据。`assistant_output_sha256` 仅用于完整性与重试审计，不替代 turn identity。
 
   **Turn parser baseline（参考 SyncNos 的概念设计）**：receipt 与 completion 必须共享同一个 conversation/turn 数据模型。实现应优先使用页面提供的稳定 turn identity（例如 enclosing `data-turn-id`），再使用 message identity；不能把每个 role node、最新 bubble 或文本相等性当作 turn identity。解析器应保留 conversation DOM document order、role、同一 turn 内的多个 message 顺序，并允许 virtualized shell 在后续 pass hydrate 后通过跨 pass harvest/cache 重建完整 ordered set。长内容提取是对已定位 turn 的完整 extraction/assembly，不能用 output 长度或固定首 token 窗口替代。完成判定必须绑定目标 assistant turn，而非任意 `Copy*` descendant、静默窗口或 generating 状态的单一快照。SyncNos 仅作为概念参考，不得复制其 AGPL implementation。 新版 `data-turn-key` shell 内含 user / assistant 两个 role；应以已确认 user record 的稳定 key 定位配对 assistant，不以可被复用的 live shell 属性重新推断归属，也不扫描其他 shell 来补足缺失回复。配对 assistant 未 hydrate 时继续等待，保留其他虚拟化边界记录与 legacy unknown-boundary guard。
@@ -71,6 +73,9 @@
 
 - `README.md` 与 `README.zh-CN.md` **必须同步改**，不得只改英文。
 - 术语对齐：helper vs native host；transport completion（`TURN_IDLE`）vs formal verdict；recovery phase vs terminal phase；relay-only verdict vs PR comment。
+- 消费者通用使用入口为 `docs/consumer-guide.md`，集中路由功能、安装升级、诊断、恢复和版本限制；行为仍以源码与契约为准，不另建平行规则或逐次会话流水账。
+- **内部 Bug 修复通常只维护插件仓库；只有调用方式、兼容性或消费者自身流程变化，才需要同步消费者 convention。** 插件发布时说明消费者是否需要动作；需要更新组件不等于需要复制修复细节到消费者文档。消费者采用新版本时只更新必要的版本指针与适用要求。
+- 消费者保留采用版本、评审模式、项目授权、formal verdict 来源及本地治理规则，通用操作指向对应 tag 的指南；开发验证可以固定 commit，并明确未发布。不以 `main` 或本机路径代表已安装版本，不让插件参考流程覆盖项目规则。发布时同步指南中的能力状态及迁移说明；未发布能力不得归入已有 release。
 
 ## 安全与持久化
 
